@@ -1318,3 +1318,12 @@ figure.zoomable.can-scroll figcaption::after {
   .kgr-hoprow { grid-template-columns: 4.5rem minmax(0, 1fr) minmax(0, 1fr); gap: .35rem; }
   .kgr-big b { font-size: 1.25rem; }
 }
+
+/* Plain code blocks inside cards (s3 SPARQL, s5 snippets): light box, same mono stack */
+.body pre, pre.code {
+  background: var(--code-bg); color: var(--code-ink);
+  border: 1px solid var(--hairline); border-radius: 10px;
+  padding: 14px 16px; margin: 14px 0;
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13.5px; line-height: 1.6; white-space: pre; overflow-x: auto;
+}
