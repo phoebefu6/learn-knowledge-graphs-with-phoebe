@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Entities and relations as a graph, queries over it, and graph-based retrieval. Find the questions only a graph can answer, and when a GraphRAG is worth its cost. Six sessions on a real Wikidata graph, with a multi-hop lab computed in your browser. Free, by Phoebe Fu.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Learn Knowledge Graphs with Phoebe">
+<meta property="og:description" content="24 real questions over a Wikidata graph. Chunk retrieval at k = 10 finds 9, none past two hops; the graph finds 24, until one relation was never extracted and it finds 4, with no error.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Learn Knowledge Graphs with Phoebe">
+<meta name="twitter:description" content="Entities, relations, Cypher and SPARQL, graph algorithms and GraphRAG, on a real Wikidata graph.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Learn Knowledge Graphs with Phoebe</title>
+<link rel="stylesheet" href="assets/style.css?v=2">
+<style>
+  .stats-row { display: flex; gap: 2.4rem; margin-top: 1.5rem; flex-wrap: wrap; }
+  .stat b { display: block; font-size: 2.1rem; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: .72rem; opacity: 1; text-transform: uppercase; letter-spacing: .09em; font-weight: 600; }
+  .course-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+  .course-card {
+    border: 1px solid var(--hairline);
+    border-top: 4px solid var(--diff, var(--indigo));
+    border-radius: var(--radius);
+    padding: 1.2rem 1.3rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    text-decoration: none;
+    color: var(--ink);
+    background: #fff;
+    transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+    position: relative;
+  }
+  .course-card:hover { border-color: var(--indigo-soft); border-top-color: var(--diff, var(--indigo)); box-shadow: 0 8px 28px rgba(var(--shadow-rgb),.16); transform: translateY(-3px); }
+  .course-card .cicon { font-size: 1.7rem; line-height: 1; }
+  .course-card .cnum { font-size: .72rem; font-weight: 700; color: var(--indigo); text-transform: uppercase; letter-spacing: .1em; }
+  .course-card h3 { font-size: 1.05rem; font-weight: 800; line-height: 1.3; }
+  .course-card p { font-size: .85rem; color: var(--muted); flex: 1; }
+  .course-card .meta { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .diff-legend { display: flex; gap: 1rem; margin-top: 1.6rem; font-size: .74rem; color: var(--muted); font-weight: 600; flex-wrap: wrap; }
+  .diff-legend i { display: inline-block; width: .85rem; height: .35rem; border-radius: 999px; margin-right: .35rem; vertical-align: middle; }
+  .paths { margin-top: 2.6rem; }
+  .paths h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: .3rem; }
+  .paths .plede { color: var(--muted); font-size: .92rem; margin-bottom: .8rem; }
+  .path { display: flex; gap: .55rem; align-items: center; padding: .75rem 0; border-bottom: .5px solid var(--hairline); flex-wrap: wrap; }
+  .path:last-child { border-bottom: none; }
+  .path b { min-width: 15.5rem; font-size: .9rem; }
+  .path .pstep { background: var(--indigo-50); color: var(--indigo-deep); border-radius: 999px; padding: .16rem .68rem; font-weight: 700; font-size: .8rem; text-decoration: none; transition: all .12s ease; }
+  .path .pstep:hover { background: var(--indigo); color: #fff; }
+  .path .parr { color: var(--muted); font-weight: 700; }
+  .mm-section { margin-top: 1.6rem; }
+  .mm-section h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: .2rem; }
+  .mm-section .mm-lede { color: var(--muted); font-size: .92rem; margin-bottom: .4rem; }
+  .mm-wrap { border: 1px solid var(--hairline); border-radius: var(--radius); background: linear-gradient(180deg,#fff,var(--indigo-50)); padding: .6rem; overflow-x: auto; }
+  .mm-svg { width: 100%; height: auto; display: block; max-width: 60rem; margin: 0 auto; min-width: 34rem; }
+  .mm-link { cursor: pointer; text-decoration: none; }
+  .mm-node rect { transition: opacity .15s ease, filter .15s ease; }
+  .mm-node text { pointer-events: none; }
+  .mm-link:hover .mm-node rect { filter: brightness(1.06); }
+  .mm-edge { transition: opacity .15s ease; }
+  .not-this { border: 1px solid var(--hairline); border-left: 4px solid var(--amber); border-radius: var(--radius); background: #fff; padding: 1.1rem 1.3rem; margin-top: 1.2rem; }
+  .not-this h3 { font-size: .95rem; font-weight: 800; margin-bottom: .5rem; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn with Phoebe · Data engineering</div>
+    <h1>Learn <span class="accent">Knowledge Graphs</span> with Phoebe</h1>
+    <p class="sub">Entities and relations as a graph, queries over it, and graph-based retrieval. Find the questions only a graph can answer, and when a GraphRAG is worth its cost. Six sessions follow one constructed publisher, Vellum Press, whose research desk asks questions several hops deep. The graph is real: a Wikidata extract around a thousand Nobel laureates, their doctoral advisors, universities and countries. The centre is a lab that answers 24 questions two ways in your browser, by walking the graph and by retrieving text chunks, and counts what each one finds at every hop depth.</p>
+    <div class="stats-row">
+      <div class="stat"><b data-count="6">6</b><span>sessions</span></div>
+      <div class="stat"><b data-count="3507">3507</b><span>real Wikidata nodes</span></div>
+      <div class="stat"><b data-count="24">24</b><span>questions, 1 to 4 hops</span></div>
+      <div class="stat"><b data-count="9">9</b><span>found by chunks at k = 10</span></div>
+      <div class="stat"><b data-count="45">45</b><span>min per session</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="section">
+    <div class="paths" style="margin-top:0">
+      <h2>The six sessions 🎯 <span style="font-size:.85rem;font-weight:600;color:var(--muted)">· from "how many hops is this?" to graph, vectors or both</span></h2>
+      <p class="plede">The running case is <strong>Vellum Press</strong>, a constructed academic publisher whose desk answers questions like "which laureates studied under someone who also won?". Each session adds one section to Vellum's graph design note, and the last one turns it into a costed decision.</p>
+    </div>
+    <div class="course-grid">
+      <a class="course-card" href="courses/01-when-the-question-is-about-relationships.html" style="--diff:#34D399">
+        <span class="cicon">🔗</span>
+        <span class="cnum">Session 1 · foundations</span>
+        <h3>When the question is about relationships</h3>
+        <p>Entity, relation and hop; the questions a table answers and the ones a graph answers; join depth as the tell; what chunk retrieval quietly gets wrong. Build-along: sort ten desk questions by hops.</p>
+        <span class="meta"><span class="pill amber">▶ Start here</span></span>
+      </a>
+      <a class="course-card" href="courses/02-nodes-edges-and-two-models.html" style="--diff:#34D399">
+        <span class="cicon">🧩</span>
+        <span class="cnum">Session 2 · foundations</span>
+        <h3>Nodes, edges and two models</h3>
+        <p>The labelled property graph and RDF triples, IRIs and Wikidata's statements, qualifiers and Q-numbers; GQL as an ISO standard; schema first or schema later. Build-along: Vellum's graph model.</p>
+        <span class="meta"><span class="pill">the graph model</span></span>
+      </a>
+      <a class="course-card" href="courses/03-cypher-and-sparql-side-by-side.html" style="--diff:#FBBF24">
+        <span class="cicon">🔎</span>
+        <span class="cnum">Session 3 · core</span>
+        <h3>Cypher and SPARQL, side by side</h3>
+        <p>MATCH patterns and variable-length paths, SPARQL graph patterns and property paths, the same question in both. Build-along: four queries over the laureates, run in the page.</p>
+        <span class="meta"><span class="pill">four queries</span></span>
+      </a>
+      <a class="course-card" href="courses/04-the-multi-hop-lab.html" style="--diff:#FB923C">
+        <span class="cicon">🎛️</span>
+        <span class="cnum">Session 4 · bench night</span>
+        <h3>The multi-hop lab</h3>
+        <p>24 questions answered by graph traversal and by BM25 chunks, computed live: recall by hop depth, context cost, and the missing relation that fails without an error. Build-along: the multi-hop result.</p>
+        <span class="meta"><span class="pill amber">★ the bench</span></span>
+      </a>
+      <a class="course-card" href="courses/05-paths-centrality-communities.html" style="--diff:#FB923C">
+        <span class="cicon">🕸️</span>
+        <span class="cnum">Session 5 · applied</span>
+        <h3>Paths, centrality and communities</h3>
+        <p>Shortest paths, degree, betweenness and PageRank, community detection, and the hub that wins every measure because of how the graph was modelled. Build-along: who connects Vellum's network.</p>
+        <span class="meta"><span class="pill">the network finding</span></span>
+      </a>
+      <a class="course-card" href="courses/06-graphrag-when-the-graph-feeds-the-llm.html" style="--diff:#F87171">
+        <span class="cicon">🤖</span>
+        <span class="cnum">Session 6 · capstone</span>
+        <h3>GraphRAG: when the graph feeds the LLM</h3>
+        <p>Graph as context, community summaries, text-to-Cypher, the cost of extraction and upkeep, and the evaluations that disagree about the gains. Capstone: Vellum's graph, vectors or both decision.</p>
+        <span class="meta"><span class="pill amber">🔒 the decision</span></span>
+      </a>
+    </div>
+    <div class="diff-legend">
+      <span><i style="background:#34D399"></i>foundations</span>
+      <span><i style="background:#FBBF24"></i>core</span>
+      <span><i style="background:#FB923C"></i>bench and applied</span>
+      <span><i style="background:#F87171"></i>capstone</span>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="paths" style="margin-top:0">
+      <h2>Your passport 🎫</h2>
+      <p class="plede">Clear all three quiz questions in a session and it gets stamped. Six stamps means you can count the hops in a question, model it as a graph, query it two ways, measure what retrieval misses, read a network without being fooled by a hub, and say when a GraphRAG pays for itself. Stamps live in this browser only.</p>
+    </div>
+    <div class="pp-strip"></div>
+  </section>
+
+  <section class="section">
+    <div class="not-this">
+      <h3>What this is not, so you land in the right place 🧭</h3>
+      <table class="clean">
+        <tr><th>If your question is</th><th>Go here instead</th></tr>
+        <tr><td>How do embeddings, chunking, vector databases, hybrid search and reranking work?</td><td><a href="https://phoebefu6.github.io/learn-rag-with-phoebe/">RAG ↗</a> (builder sessions 1 to 4 are the prerequisite here)</td></tr>
+        <tr><td>Are these two customer records the same person?</td><td><a href="https://phoebefu6.github.io/learn-entity-resolution-with-phoebe/">Entity Resolution ↗</a></td></tr>
+        <tr><td>How do I design tables, keys and a star schema?</td><td><a href="https://phoebefu6.github.io/learn-data-modeling-with-phoebe/">Data Modeling ↗</a></td></tr>
+        <tr><td>Which tables and dashboards does this column feed?</td><td><a href="https://phoebefu6.github.io/learn-metadata-catalog-lineage-with-phoebe/">Metadata, Catalog and Lineage ↗</a></td></tr>
+        <tr><td>How do I get an LLM to write correct SQL?</td><td><a href="https://phoebefu6.github.io/learn-text-to-sql-with-phoebe/">Text-to-SQL ↗</a></td></tr>
+        <tr><td><strong>Some of our questions are about how things connect, several steps away, and I need to know whether a graph would answer them.</strong></td><td><strong>you are in the right place</strong></td></tr>
+      </table>
+      <p style="margin-top:.7rem;font-size:.86rem;color:var(--muted)"><strong>Graph retrieval, measured.</strong> Vector retrieval stays in the RAG course; these pages own the graph side and compare it against a plain keyword baseline, on real data, with every number reproducible.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="paths">
+      <h2>Choose your path 🗺️</h2>
+      <p class="plede">One track. These are the shortest routes to what each kind of builder needs first.</p>
+      <div class="path"><b>🤖 I build RAG and wonder about GraphRAG</b>
+        <a class="pstep" href="courses/01-when-the-question-is-about-relationships.html">1</a><span class="parr">→</span>
+        <a class="pstep" href="courses/04-the-multi-hop-lab.html">4</a><span class="parr">→</span>
+        <a class="pstep" href="courses/06-graphrag-when-the-graph-feeds-the-llm.html">6</a>
+        <span style="font-size:.82rem;color:var(--muted)">ML engineers: which questions need hops, what chunks miss, when a graph pays</span>
+      </div>
+      <div class="path"><b>🛠️ I will build and query the graph</b>
+        <a class="pstep" href="courses/01-when-the-question-is-about-relationships.html">1</a><span class="parr">→</span>
+        <a class="pstep" href="courses/02-nodes-edges-and-two-models.html">2</a><span class="parr">→</span>
+        <a class="pstep" href="courses/03-cypher-and-sparql-side-by-side.html">3</a><span class="parr">→</span>
+        <a class="pstep" href="courses/05-paths-centrality-communities.html">5</a>
+        <span style="font-size:.82rem;color:var(--muted)">data engineers: modelling, Cypher and SPARQL, graph algorithms</span>
+      </div>
+      <div class="path"><b>🎯 The whole design note</b>
+        <a class="pstep" href="courses/01-when-the-question-is-about-relationships.html">1</a><span class="parr">→</span>
+        <a class="pstep" href="courses/02-nodes-edges-and-two-models.html">2</a><span class="parr">→</span>
+        <a class="pstep" href="courses/03-cypher-and-sparql-side-by-side.html">3</a><span class="parr">→</span>
+        <a class="pstep" href="courses/04-the-multi-hop-lab.html">4</a><span class="parr">→</span>
+        <a class="pstep" href="courses/05-paths-centrality-communities.html">5</a><span class="parr">→</span>
+        <a class="pstep" href="courses/06-graphrag-when-the-graph-feeds-the-llm.html">6</a>
+        <span style="font-size:.82rem;color:var(--muted)">question sort, graph model, four queries, multi-hop result, network finding, the decision</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="paths" style="margin-top:0">
+      <h2>What is honest here 🧾</h2>
+      <p class="plede">Vellum is invented, and every page that uses it says so. The data, standards and papers are real, read at source, and dated, because graph tooling moves fast.</p>
+    </div>
+    <table class="clean">
+      <tr><th>Claim</th><th>Status</th></tr>
+      <tr><td>Vellum Press, its desk and its questions</td><td><strong>Constructed</strong> for these pages and labelled every time</td></tr>
+      <tr><td>The graph: 1,523 people, 1,837 institutions, 141 countries, 6 prizes, 10,954 edges</td><td><strong>Real Wikidata data</strong> (CC0), fetched 2026-11-16, shipped with the code that built it</td></tr>
+      <tr><td>Every number on the lab and the algorithm widgets</td><td><strong>Really computed</strong> in your browser; a separate Python reference reproduces every value</td></tr>
+      <tr><td>The text chunks the lab retrieves from</td><td><strong>Generated</strong> from the same facts with templates, and labelled so on the widget</td></tr>
+      <tr><td>GraphRAG gains over vector retrieval</td><td><strong>Contested</strong>: session 6 sets the evaluations that disagree side by side and does not pick a winner</td></tr>
+    </table>
+  </section>
+
+  <section class="section mm-section">
+    <h2>The knowledge map 🧠</h2>
+    <p class="mm-lede">The whole course at a glance - hover a session to spotlight its concepts, click any node to jump in.</p>
+    <div class="mm-wrap"><div id="mindmap"></div></div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>learn-knowledge-graphs-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span>Neighbours on the shelf: <a href="https://phoebefu6.github.io/learn-rag-with-phoebe/">RAG ↗</a> &nbsp;·&nbsp; <a href="https://phoebefu6.github.io/learn-entity-resolution-with-phoebe/">Entity Resolution ↗</a> &nbsp;·&nbsp; <a href="https://phoebefu6.github.io/learn-data-modeling-with-phoebe/">Data Modeling ↗</a></span>
+  </footer>
+
+</main>
+
+<script>
+window.MINDMAP_DATA = {
+  "title": "Knowledge\nGraphs",
+  "centerColor": "#002B25",
+  "sessions": [
+    {
+      "label": "Questions about\nrelationships",
+      "href": "courses/01-when-the-question-is-about-relationships.html",
+      "color": "#34D399",
+      "concepts": [
+        {
+          "label": "Entity, relation, hop",
+          "href": "courses/01-when-the-question-is-about-relationships.html"
+        },
+        {
+          "label": "Join depth is the tell",
+          "href": "courses/01-when-the-question-is-about-relationships.html"
+        },
+        {
+          "label": "What chunks miss",
+          "href": "courses/01-when-the-question-is-about-relationships.html"
+        }
+      ]
+    },
+    {
+      "label": "Nodes, edges,\ntwo models",
+      "href": "courses/02-nodes-edges-and-two-models.html",
+      "color": "#34D399",
+      "concepts": [
+        {
+          "label": "Property graph",
+          "href": "courses/02-nodes-edges-and-two-models.html"
+        },
+        {
+          "label": "RDF triples and IRIs",
+          "href": "courses/02-nodes-edges-and-two-models.html"
+        },
+        {
+          "label": "Wikidata statements",
+          "href": "courses/02-nodes-edges-and-two-models.html"
+        }
+      ]
+    },
+    {
+      "label": "Cypher and\nSPARQL",
+      "href": "courses/03-cypher-and-sparql-side-by-side.html",
+      "color": "#FBBF24",
+      "concepts": [
+        {
+          "label": "MATCH patterns",
+          "href": "courses/03-cypher-and-sparql-side-by-side.html"
+        },
+        {
+          "label": "Property paths",
+          "href": "courses/03-cypher-and-sparql-side-by-side.html"
+        },
+        {
+          "label": "Same question, twice",
+          "href": "courses/03-cypher-and-sparql-side-by-side.html"
+        }
+      ]
+    },
+    {
+      "label": "The multi-hop\nlab",
+      "href": "courses/04-the-multi-hop-lab.html",
+      "color": "#FB923C",
+      "concepts": [
+        {
+          "label": "Graph vs chunks",
+          "href": "courses/04-the-multi-hop-lab.html"
+        },
+        {
+          "label": "Recall by hop depth",
+          "href": "courses/04-the-multi-hop-lab.html"
+        },
+        {
+          "label": "The missing edge",
+          "href": "courses/04-the-multi-hop-lab.html"
+        }
+      ]
+    },
+    {
+      "label": "Paths and\ncentrality",
+      "href": "courses/05-paths-centrality-communities.html",
+      "color": "#FB923C",
+      "concepts": [
+        {
+          "label": "Shortest paths",
+          "href": "courses/05-paths-centrality-communities.html"
+        },
+        {
+          "label": "Centrality measures",
+          "href": "courses/05-paths-centrality-communities.html"
+        },
+        {
+          "label": "Communities",
+          "href": "courses/05-paths-centrality-communities.html"
+        }
+      ]
+    },
+    {
+      "label": "GraphRAG",
+      "href": "courses/06-graphrag-when-the-graph-feeds-the-llm.html",
+      "color": "#F87171",
+      "concepts": [
+        {
+          "label": "Community summaries",
+          "href": "courses/06-graphrag-when-the-graph-feeds-the-llm.html"
+        },
+        {
+          "label": "Text-to-Cypher",
+          "href": "courses/06-graphrag-when-the-graph-feeds-the-llm.html"
+        },
+        {
+          "label": "Graph, vectors or both",
+          "href": "courses/06-graphrag-when-the-graph-feeds-the-llm.html"
+        }
+      ]
+    }
+  ]
+};
+</script>
+<script src="assets/mindmap.js?v=1"></script>
+<script src="assets/app.js?v=1"></script>
+</body>
+</html>

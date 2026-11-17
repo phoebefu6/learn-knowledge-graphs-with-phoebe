@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 5 of 6. Shortest paths, degree, betweenness, PageRank, label propagation, Louvain and Leiden, computed in your browser on a real Wikidata graph of Nobel laureates and their advisors. Plus the hub trap: when a country node wins every measure.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Paths, centrality and communities - learn knowledge graphs with phoebe">
+<meta property="og:description" content="Session 5 of 6. On the advisor network August Kundt is the top bridge. On the full graph United States wins every measure. Learn which view to trust.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/courses/05-paths-centrality-communities.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Paths, centrality and communities - learn knowledge graphs with phoebe">
+<meta name="twitter:description" content="Session 5 of 6. Shortest paths, centrality and communities on a real graph, and the hub that wins every measure for the wrong reason.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 5 · Paths, centrality and communities - learn knowledge graphs with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-knowledge-graphs-with-phoebe</a> / Session 5 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Knowledge Graphs with Phoebe · Session 5 of 6</div>
+    <h1>Paths, centrality and <span class="accent">communities</span></h1>
+    <p class="sub">Sessions 3 and 4 asked the graph questions you already knew how to phrase. Tonight the graph answers questions about itself: how are these two people connected, who sits between the groups, which groups are there at all. Three families of algorithm, all computed in your browser on the same Wikidata graph, and one trap that makes all three confidently wrong.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Applied</span>
+      <span class="chip audience">Data and ML engineers</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · Paths, centrality, communities</span>
+      <span class="a3" style="flex:5">18-40 · Build-along: who connects Vellum's network</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we start</h2>
+    </div>
+    <p class="lede">A pattern query answers the question you wrote. A graph algorithm answers a question about the whole shape: the shortest route between two nodes, the nodes everything flows through, the clusters that hang together. These are the answers editors love to quote, and the ones most sensitive to a modelling choice nobody wrote down. Tonight you compute each one twice, on two views of the same graph, and learn to say which view the number came from.</p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">★ Build-along = do it yourself</span>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Constructed Vellum example</span>
+      <p><strong>The sidebar brief.</strong> Vellum Press, the constructed publisher, wants a sidebar for a history-of-science book: "the most connected scientists of the last 150 years". The research desk has the graph from sessions 1 to 4, a real Wikidata extract of 3,507 nodes: 1,000 laureates, their advisors two generations up, their universities, countries and prizes. The editors expect a top-ten list. The desk's job tonight is to make sure the list measures scientists and not the way the data was modelled.</p>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> Section 5 of Vellum's graph design note: the top names by degree, betweenness and PageRank on the advisor network, the five largest communities, and one paragraph on which view of the graph to trust and why the full graph's winner, a country, is an artefact.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers shortest paths and what they answer</span>
+      <h2>The shortest path depends on the edges you allow</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">A shortest path answers "how are these two connected, in the fewest steps?". On a graph without weights every edge costs one, so the answer is a hop count and one route. The catch: the route is only as meaningful as the edges you let it use. Allow a prize node and two economists who never met are two hops apart.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 410" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two shortest paths from Esther Duflo to Paul Samuelson on the same Wikidata graph. Top, the advisor network only: 7 hops, up through Abhijit Banerjee, Eric Maskin and Kenneth Arrow, down to Arrow's student Michael Spence, up through Spence's other advisor Thomas Schelling to Wassily Leontief, and down to Leontief's student Samuelson. Bottom, the full graph: 2 hops, because both won the economics prize and the prize is a node.">
+        <defs>
+          <filter id="k5aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="51" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+        </defs>
+        <style>
+          .k5aH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k5aL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k5aS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k5aI { font: 400 11px Inter, sans-serif; fill: #11211E; }
+          .k5aP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k5aB { font: 800 11px Inter, sans-serif; fill: #6A4300; }
+          .k5aV { font: 800 18px Inter, sans-serif; fill: #002B25; }
+          .k5aN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k5aH" x="24" y="26">ESTHER DUFLO TO PAUL SAMUELSON, ON TWO VIEWS OF ONE GRAPH</text>
+
+        <g filter="url(#k5aSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="14" y="40" width="852" height="214" rx="12" transform="rotate(-0.3 440 147)" fill="#E9F5F2"/>
+          <rect x="14" y="270" width="852" height="104" rx="12" transform="rotate(0.3 440 322)" fill="#FFFFFF"/>
+          <path d="M116.8 209.2 L127.2 205.8" stroke="#004238" stroke-width="2.6"/>
+          <path d="M222.8 174.2 L233.2 170.8" stroke="#004238" stroke-width="2.6"/>
+          <path d="M328.8 139.2 L339.2 135.8" stroke="#004238" stroke-width="2.6"/>
+          <path d="M434.8 135.8 L445.2 139.2" stroke="#004238" stroke-width="2.6"/>
+          <path d="M540.8 139.2 L551.2 135.8" stroke="#004238" stroke-width="2.6"/>
+          <path d="M646.8 104.2 L657.2 100.8" stroke="#004238" stroke-width="2.6"/>
+          <path d="M752.8 100.8 L763.2 104.2" stroke="#004238" stroke-width="2.6"/>
+          <rect x="24" y="210" width="90" height="30" rx="15" transform="rotate(-1.2 69 225)" fill="#FFFFFF"/>
+          <rect x="130" y="175" width="90" height="30" rx="15" transform="rotate(1 175 190)" fill="#FFFFFF"/>
+          <rect x="236" y="140" width="90" height="30" rx="15" transform="rotate(-0.8 281 155)" fill="#FFFFFF"/>
+          <rect x="342" y="105" width="90" height="30" rx="15" transform="rotate(1.4 387 120)" fill="#FFFFFF"/>
+          <rect x="448" y="140" width="90" height="30" rx="15" transform="rotate(-1.5 493 155)" fill="#FFFFFF"/>
+          <rect x="554" y="105" width="90" height="30" rx="15" transform="rotate(0.9 599 120)" fill="#FFFFFF"/>
+          <rect x="660" y="70" width="90" height="30" rx="15" transform="rotate(-1 705 85)" fill="#FFFFFF"/>
+          <rect x="766" y="105" width="90" height="30" rx="15" transform="rotate(1.2 811 120)" fill="#FFFFFF"/>
+          <path d="M200 330 L570 330" stroke="#004238" stroke-width="2.6"/>
+          <rect x="110" y="315" width="90" height="30" rx="15" transform="rotate(-1 155 330)" fill="#FFFFFF"/>
+          <rect x="370" y="308" width="140" height="44" rx="6" transform="rotate(0.8 440 330)" fill="#F4B860"/>
+          <rect x="570" y="315" width="96" height="30" rx="15" transform="rotate(1.1 618 330)" fill="#FFFFFF"/>
+        </g>
+
+        <text class="k5aP" x="30" y="62">ADVISOR NETWORK ONLY</text>
+        <text class="k5aV" x="30" y="88">7 hops</text>
+        <text class="k5aL" x="69" y="229" text-anchor="middle">Duflo</text>
+        <text class="k5aL" x="175" y="194" text-anchor="middle">Banerjee</text>
+        <text class="k5aL" x="281" y="159" text-anchor="middle">Maskin</text>
+        <text class="k5aL" x="387" y="124" text-anchor="middle">Arrow</text>
+        <text class="k5aL" x="493" y="159" text-anchor="middle">Spence</text>
+        <text class="k5aL" x="599" y="124" text-anchor="middle">Schelling</text>
+        <text class="k5aL" x="705" y="89" text-anchor="middle">Leontief</text>
+        <text class="k5aL" x="811" y="124" text-anchor="middle">Samuelson</text>
+        <text class="k5aS" x="560" y="210">up 3 generations, down 1, up 2, down 1</text>
+        <text class="k5aS" x="560" y="228">higher on the page = one advisor further up</text>
+
+        <text class="k5aP" x="30" y="292">FULL GRAPH</text>
+        <text class="k5aV" x="30" y="336">2 hops</text>
+        <text class="k5aL" x="155" y="334" text-anchor="middle">Duflo</text>
+        <text class="k5aL" x="440" y="328" text-anchor="middle">Economics prize</text>
+        <text class="k5aI" x="440" y="344" text-anchor="middle">one node, many winners</text>
+        <text class="k5aL" x="618" y="334" text-anchor="middle">Samuelson</text>
+        <text class="k5aB" x="285" y="320" text-anchor="middle">WON</text>
+        <text class="k5aB" x="540" y="320" text-anchor="middle">WON</text>
+        <text class="k5aS" x="690" y="334">shared prize, not a tie</text>
+
+        <text class="k5aN" x="24" y="396">Real Wikidata rows, undirected views, as the widget below computes them. Both answers are correct shortest paths.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - same two people, same graph: 7 hops of real academic ties, or 2 hops through a prize node</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What "shortest" means when edges have no weight<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Without weights every edge counts as one step, so the shortest path is the one with the fewest hops. Breadth-first search finds it: visit every neighbour of the start, then every neighbour of those, ring by ring, and stop the moment the target turns up. The first ring that contains the target is the hop count.</p>
+        <p>In networkx the call is <code>shortest_path(G, source=None, target=None, weight=None, method='dijkstra')</code>. With <code>weight=None</code> every edge counts 1 and the unweighted method is used; give it a source and a target and you get one list of nodes back. "One" matters: several routes can tie on length, and the function returns just one of them. The widget below does the same, a breadth-first search over neighbours in a fixed order, so it always shows the same route.</p>
+        <p>What a shortest path answers well: "are these two connected at all, and how closely?". What it does not answer: "how strongly", "how often" or "through whom, typically". A single route hides every other route of the same length.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The path you get depends on which edges you allow<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>On the advisor network (people only, ADVISED edges only) Esther Duflo reaches Paul Samuelson in 7 hops. The route climbs three generations to Kenneth Arrow, steps down to Arrow's student Michael Spence, climbs through Spence's other advisor Thomas Schelling to Wassily Leontief, and steps down to Leontief's student Samuelson. Every hop is a real doctoral relationship, and the route tells a story an editor could check.</p>
+        <p>On the full graph, with institutions, countries and prizes as nodes, the same search returns 2 hops: Duflo won the economics prize, Samuelson won the economics prize. True, and useless as a "connection". Nothing was wrong with the algorithm; the graph let it walk through a node that stands for a category, not a relationship.</p>
+        <p>The rule: decide which node and edge types count as a connection for this question, build that view, then compute. "Shortest path on the whole graph" is rarely the question anyone meant.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Weighted paths, and SHORTEST k in Cypher<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Give edges a cost and "shortest" becomes "cheapest": pass <code>weight="cost"</code> to networkx and it uses Dijkstra's method instead. Weights are one way out of the prize shortcut: make a hop through a prize node expensive and the search prefers real ties, without deleting anything.</p>
+        <p>In Neo4j's current Cypher manual, shortest paths are written with the <code>SHORTEST k</code>, <code>ALL SHORTEST</code> and <code>ANY</code> keywords inside the pattern. The manual says <code>SHORTEST</code> "functionally replaces and extends" the older <code>shortestPath()</code> and <code>allShortestPaths()</code> functions, which still run but are not GQL conformant; <code>k</code> can be a parameter as of Neo4j 2025.06. Restricting the edge type in the pattern is the Cypher version of choosing the advisor view:</p>
+        <pre><code>MATCH p = SHORTEST 1
+  (a:Person {name:"Esther Duflo"})-[:ADVISED]-+(b:Person {name:"Paul Samuelson"})
+RETURN p</code></pre>
+        <p>Run it in Neo4j against your own load of the extract; the query box on these pages does not support <code>SHORTEST</code>, so no output is shown here. Swap <code>[:ADVISED]</code> for an untyped <code>[]</code> and you have asked the full-graph question again.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>A loop in Wikidata.</strong> Theodor Zincke lists Otto Hahn as both his doctoral advisor and his doctoral student, while Hahn lists Zincke as his advisor. So the graph holds Hahn advised Zincke and Zincke advised Hahn: a two-node loop. A shortest path never uses a loop, but anything that counts paths does: "how many academic descendants within three generations" walks Hahn to Zincke to Hahn and counts it. The undirected views in tonight's widget collapse the pair into one edge, which hides the artefact instead of fixing it. The graph is only as true as its edges.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers degree, betweenness, PageRank and the hub trap</span>
+      <h2>Three ways to be central</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">"Most connected" is three different questions. Degree counts neighbours. Betweenness counts how many shortest paths run through you. PageRank asks whether your neighbours are themselves important. On the advisor network they agree at the top on Ernest Rutherford, and disagree on everyone who matters as a bridge.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top five people on the advisor network by three measures. Degree: Ernest Rutherford 15, Joseph John Thomson 10, Wassily Leontief 9, Arnold Sommerfeld 8, Ralph H. Fowler 8. Betweenness: August Kundt 0.0709, Georg Hermann Quincke 0.0704, Gabriel Lippmann 0.0622, Franz S. Exner 0.0597, Karl Herzfeld 0.0589. PageRank: Ernest Rutherford 0.0051, Joseph John Thomson 0.0033, Enrico Fermi 0.0033, Wassily Leontief 0.0032, Arnold Sommerfeld 0.0029. The betweenness top five share no name with the degree top five.">
+        <defs>
+          <filter id="k5bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="53" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="k5bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#004238" stroke-width="1" opacity=".5"/></pattern>
+        </defs>
+        <style>
+          .k5bH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k5bM { font: 600 11px Inter, sans-serif; fill: #11211E; }
+          .k5bS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k5bP { font: 800 11px Inter, sans-serif; fill: #002B25; }
+          .k5bB { font: 800 11px Inter, sans-serif; fill: #6A4300; }
+          .k5bN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k5bH" x="12" y="26">TOP FIVE ON THE ADVISOR NETWORK, THREE WAYS</text>
+
+        <g filter="url(#k5bSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="12" y="42" width="276" height="190" rx="10" transform="rotate(-0.5 150 137)" fill="#FFFFFF"/>
+          <rect x="302" y="42" width="276" height="190" rx="10" transform="rotate(0.4 440 137)" fill="#E9F5F2" stroke="#004238"/>
+          <rect x="592" y="42" width="276" height="190" rx="10" transform="rotate(-0.4 730 137)" fill="#FFFFFF"/>
+          <rect x="162" y="83" width="60" height="12" fill="url(#k5bHc)"/>
+          <rect x="162" y="113" width="40" height="12" fill="url(#k5bHc)"/>
+          <rect x="162" y="143" width="36" height="12" fill="url(#k5bHc)"/>
+          <rect x="162" y="173" width="32" height="12" fill="url(#k5bHc)"/>
+          <rect x="162" y="203" width="32" height="12" fill="url(#k5bHc)"/>
+          <rect x="452" y="83" width="60" height="12" fill="#F4B860"/>
+          <rect x="452" y="113" width="60" height="12" fill="#F4B860"/>
+          <rect x="452" y="143" width="53" height="12" fill="url(#k5bHc)"/>
+          <rect x="452" y="173" width="51" height="12" fill="url(#k5bHc)"/>
+          <rect x="452" y="203" width="50" height="12" fill="url(#k5bHc)"/>
+          <rect x="742" y="83" width="60" height="12" fill="url(#k5bHc)"/>
+          <rect x="742" y="113" width="39" height="12" fill="url(#k5bHc)"/>
+          <rect x="742" y="143" width="39" height="12" fill="url(#k5bHc)"/>
+          <rect x="742" y="173" width="38" height="12" fill="url(#k5bHc)"/>
+          <rect x="742" y="203" width="34" height="12" fill="url(#k5bHc)"/>
+        </g>
+
+        <text class="k5bP" x="24" y="66">DEGREE</text>
+        <text class="k5bM" x="24" y="94">Ernest Rutherford</text><text class="k5bP" x="230" y="94">15</text>
+        <text class="k5bM" x="24" y="124">Joseph John Thomson</text><text class="k5bP" x="230" y="124">10</text>
+        <text class="k5bM" x="24" y="154">Wassily Leontief</text><text class="k5bP" x="230" y="154">9</text>
+        <text class="k5bM" x="24" y="184">Arnold Sommerfeld</text><text class="k5bP" x="230" y="184">8</text>
+        <text class="k5bM" x="24" y="214">Ralph H. Fowler</text><text class="k5bP" x="230" y="214">8</text>
+
+        <text class="k5bP" x="314" y="66">BETWEENNESS</text>
+        <text class="k5bM" x="314" y="94">August Kundt</text><text class="k5bP" x="520" y="94">0.0709</text>
+        <text class="k5bM" x="314" y="124">Georg Hermann Quincke</text><text class="k5bP" x="520" y="124">0.0704</text>
+        <text class="k5bM" x="314" y="154">Gabriel Lippmann</text><text class="k5bP" x="520" y="154">0.0622</text>
+        <text class="k5bM" x="314" y="184">Franz S. Exner</text><text class="k5bP" x="520" y="184">0.0597</text>
+        <text class="k5bM" x="314" y="214">Karl Herzfeld</text><text class="k5bP" x="520" y="214">0.0589</text>
+
+        <text class="k5bP" x="604" y="66">PAGERANK</text>
+        <text class="k5bM" x="604" y="94">Ernest Rutherford</text><text class="k5bP" x="810" y="94">0.0051</text>
+        <text class="k5bM" x="604" y="124">Joseph John Thomson</text><text class="k5bP" x="810" y="124">0.0033</text>
+        <text class="k5bM" x="604" y="154">Enrico Fermi</text><text class="k5bP" x="810" y="154">0.0033</text>
+        <text class="k5bM" x="604" y="184">Wassily Leontief</text><text class="k5bP" x="810" y="184">0.0032</text>
+        <text class="k5bM" x="604" y="214">Arnold Sommerfeld</text><text class="k5bP" x="810" y="214">0.0029</text>
+
+        <text class="k5bS" x="24" y="254">who has the most direct ties</text>
+        <text class="k5bS" x="314" y="254">who sits on the paths between groups</text>
+        <text class="k5bB" x="314" y="272">Kundt and Quincke: not laureates</text>
+        <text class="k5bS" x="604" y="254">whose neighbours are central too</text>
+
+        <text class="k5bN" x="12" y="302">Advisor network: 1,039 people, 965 edges. Betweenness normalised as networkx does for undirected graphs.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - degree and PageRank crown the famous teachers; betweenness crowns the bridges, and none of its top five is in the degree top five</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What each measure answers<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <table class="clean">
+          <tr><th>Measure</th><th>The question it answers</th><th>Advisor network winner</th></tr>
+          <tr><td>Degree</td><td>Who has the most direct ties? networkx's <code>degree_centrality</code> divides by n - 1, the most ties possible; the widget shows the raw count.</td><td>Ernest Rutherford, 15</td></tr>
+          <tr><td>Betweenness</td><td>How many shortest paths between other pairs run through you? <code>betweenness_centrality</code> normalises by (n-1)(n-2)/2 on an undirected graph, so 0.0709 is a share of all pairs.</td><td>August Kundt, 0.0709</td></tr>
+          <tr><td>PageRank</td><td>If you wander the graph at random, how often are you here? A tie to a central node counts more than a tie to a leaf. <code>pagerank(G, alpha=0.85, ...)</code>; alpha is the damping, the chance of following an edge rather than jumping anywhere.</td><td>Ernest Rutherford, 0.0051</td></tr>
+        </table>
+        <p>Read degree and PageRank together and they mostly agree: Rutherford, Thomson, Leontief and Sommerfeld sit in both top fives. PageRank lets Enrico Fermi in, because his students and advisors are themselves well connected. Betweenness tells a different story entirely.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Why bridges are not stars<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>August Kundt and Georg Hermann Quincke top betweenness, 0.0709 and 0.0704, and neither won a Nobel Prize. Of the betweenness top five only Gabriel Lippmann is a laureate. They are in the graph because laureates studied under them or under their students, and they score highest because they join branches of the academic family tree that would otherwise be far apart: many shortest paths between two large groups of physicists have to pass through them.</p>
+        <p>Degree misses them because a bridge does not need many ties, only the right ones. A person with a handful of students in two different lineages can outrank a famous teacher with fifteen students all in one lineage. That is the useful finding for an editor: the "most connected" scientist by one count is a different person from the one who connects the field.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The hub trap: a country wins every measure<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Switch the widget to the full graph, with institutions, countries and prizes as nodes. United States wins degree with 629 neighbours, betweenness with 0.3657 and PageRank with 0.0245. The prize nodes follow: Physiology or Medicine with 235 neighbours, Physics with 230, and the Physics prize is second on betweenness at 0.1174.</p>
+        <p>None of this is influence. It is the modelling choice from session 2: citizenship and prizes were stored as nodes, so every citizen and every winner hangs off one hub. A hub with hundreds of spokes puts any two of its neighbours two hops apart, so it sits on a huge share of all shortest paths, and it collects PageRank from everyone who points at it. The same hub swallows communities: label propagation on the full graph finds 42, and the largest, 1,521 nodes, is led by United States.</p>
+        <p>The fix is a modelling decision, made before you compute: run centrality on the view that matches the question (the advisor network for "who connects scientists"), or drop the hub types, or down-weight edges into them.</p>
+      </div>
+    </details>
+
+    <div class="callout tip">
+      <p><strong>A centrality ranking is a statement about the view, not the world.</strong> Before you publish a "most central" list, check the kind of each top node. If the winners are countries, categories or prize nodes, the list is measuring your schema. Name the view in the same sentence as the number: "on the advisor network, August Kundt has the highest betweenness".</p>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Computing cost, Brandes, and checking the widget<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Betweenness is the expensive one. The standard method, Brandes's algorithm, runs one breadth-first search from every node and then walks back through each search tree, crediting every node with its share of the shortest paths that passed through it. One search per node is why the widget warns that betweenness on the full graph takes a second or two, while degree is instant. networkx's <code>betweenness_centrality(G, k=None, normalized=True, ...)</code> takes a <code>k</code> to estimate from a sample of source nodes when the graph is too big.</p>
+        <p>The widget is not a picture of networkx; it computes everything in plain JavaScript in your browser. It was checked against networkx on both views: betweenness matches to 1e-16, and PageRank, run for 100 fixed iterations, lands within 7e-6 of networkx's result. The algorithms are short enough to read in an afternoon; the hard part is never the arithmetic, it is choosing the view.</p>
+        <p>One subtlety: these are undirected views. ADVISED is directed (advisor to student), but "who connects the field" treats a tie as a tie. A directed PageRank on advisor-to-student edges would answer a different question, closer to "whose lineage is deepest".</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>PageRank started as a ranking of the web.</strong> Page, Brin, Motwani and Winograd described it in "The PageRank Citation Ranking: Bringing Order to the Web", a Stanford InfoLab technical report dated November 1999 (reported: we found it through bibliographic records; the report server would not load). The idea carries straight over: a page, or a scientist, matters if things that matter point to it. So does the trap: a link farm on the web and a country node in a knowledge graph both manufacture importance from structure.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers label propagation, Louvain and Leiden</span>
+      <h2>Communities are a modelling output, not a fact</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">A community is a group of nodes with many edges inside and few edges out. Algorithms disagree on where the borders go, and on how many groups there are. Run two of them on the same advisor network and you get 216 communities from one and 159 from the other. Neither number is wrong. Both are answers to slightly different questions.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 346" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The five largest communities label propagation finds on the advisor network, each named by its three best-connected members: 60 people, Rutherford, J. J. Thomson, Ralph H. Fowler; 41, Leontief, H. Gregg Lewis, Werner Sombart; 37, Sommerfeld, Edward Teller, Peter Debye; 29, Helmholtz, Millikan, Johannes Peter Müller; 28, Baeyer, Emil Fischer, Robert Bunsen. Below, the same view gives 216 communities by label propagation and 159 by networkx Louvain with seed 1.">
+        <defs>
+          <filter id="k5cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="57" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="k5cHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#004238" stroke-width="1" opacity=".5"/></pattern>
+        </defs>
+        <style>
+          .k5cH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k5cM { font: 600 11px Inter, sans-serif; fill: #11211E; }
+          .k5cL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k5cS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k5cV { font: 800 18px Inter, sans-serif; fill: #002B25; }
+          .k5cN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k5cH" x="10" y="26">FIVE LARGEST COMMUNITIES ON THE ADVISOR NETWORK, BY LABEL PROPAGATION</text>
+
+        <g filter="url(#k5cSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="10" y="42" width="164" height="180" rx="22" transform="rotate(-1 92 132)" fill="#E9F5F2"/>
+          <rect x="182" y="42" width="164" height="180" rx="22" transform="rotate(1.2 264 132)" fill="#E9F5F2"/>
+          <rect x="354" y="42" width="164" height="180" rx="22" transform="rotate(-0.8 436 132)" fill="#E9F5F2"/>
+          <rect x="526" y="42" width="164" height="180" rx="22" transform="rotate(1 608 132)" fill="#E9F5F2"/>
+          <rect x="698" y="42" width="164" height="180" rx="22" transform="rotate(-1.2 780 132)" fill="#E9F5F2"/>
+          <rect x="24" y="166" width="136" height="14" fill="url(#k5cHc)"/>
+          <rect x="196" y="166" width="93" height="14" fill="url(#k5cHc)"/>
+          <rect x="368" y="166" width="84" height="14" fill="url(#k5cHc)"/>
+          <rect x="540" y="166" width="66" height="14" fill="url(#k5cHc)"/>
+          <rect x="712" y="166" width="63" height="14" fill="url(#k5cHc)"/>
+          <rect x="230" y="248" width="400" height="16" fill="url(#k5cHc)"/>
+          <rect x="230" y="282" width="294" height="16" fill="url(#k5cHc)"/>
+          <rect x="690" y="248" width="172" height="52" rx="6" transform="rotate(-1.4 776 274)" fill="#F4B860"/>
+        </g>
+
+        <text class="k5cV" x="24" y="76">60</text><text class="k5cS" x="54" y="76">people</text>
+        <text class="k5cM" x="24" y="106">Rutherford</text>
+        <text class="k5cM" x="24" y="126">J. J. Thomson</text>
+        <text class="k5cM" x="24" y="146">Ralph H. Fowler</text>
+        <text class="k5cS" x="24" y="204">reads as: physics</text>
+
+        <text class="k5cV" x="196" y="76">41</text><text class="k5cS" x="226" y="76">people</text>
+        <text class="k5cM" x="196" y="106">Leontief</text>
+        <text class="k5cM" x="196" y="126">H. Gregg Lewis</text>
+        <text class="k5cM" x="196" y="146">Werner Sombart</text>
+        <text class="k5cS" x="196" y="204">reads as: economics</text>
+
+        <text class="k5cV" x="368" y="76">37</text><text class="k5cS" x="398" y="76">people</text>
+        <text class="k5cM" x="368" y="106">Sommerfeld</text>
+        <text class="k5cM" x="368" y="126">Edward Teller</text>
+        <text class="k5cM" x="368" y="146">Peter Debye</text>
+        <text class="k5cS" x="368" y="204">reads as: physics</text>
+
+        <text class="k5cV" x="540" y="76">29</text><text class="k5cS" x="570" y="76">people</text>
+        <text class="k5cM" x="540" y="106">Helmholtz</text>
+        <text class="k5cM" x="540" y="126">Millikan</text>
+        <text class="k5cM" x="540" y="146">Johannes Peter Müller</text>
+        <text class="k5cS" x="540" y="204">physics and physiology</text>
+
+        <text class="k5cV" x="712" y="76">28</text><text class="k5cS" x="742" y="76">people</text>
+        <text class="k5cM" x="712" y="106">Baeyer</text>
+        <text class="k5cM" x="712" y="126">Emil Fischer</text>
+        <text class="k5cM" x="712" y="146">Robert Bunsen</text>
+        <text class="k5cS" x="712" y="204">reads as: chemistry</text>
+
+        <text class="k5cS" x="10" y="261">Label propagation (widget)</text>
+        <text class="k5cV" x="640" y="263">216</text>
+        <text class="k5cS" x="10" y="295">Louvain (networkx, seed 1)</text>
+        <text class="k5cV" x="534" y="297">159</text>
+        <text class="k5cL" x="706" y="272">same view,</text>
+        <text class="k5cL" x="706" y="290">two answers</text>
+
+        <text class="k5cN" x="10" y="332">Each community named by its three best-connected members, as the widget lists them. Bars to scale.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the clusters read like real schools of thought, and the number of them depends on the algorithm you picked</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What a community is, and modularity in one paragraph<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Informally, a community is a set of nodes more tightly connected to each other than to the rest. Modularity turns that into a score for a whole partition: the fraction of edges that fall inside communities, minus the fraction you would expect inside them if the same nodes kept their degrees but the edges were wired at random. Positive means "more clustered than chance". Louvain and Leiden search for a partition with high modularity; networkx's <code>greedy_modularity_communities</code> does the same greedily, using the Clauset, Newman and Moore method (Physical Review E, 2004).</p>
+        <p>Label propagation does not optimise any score. Every node starts with its own label and repeatedly adopts the label most common among its neighbours, until nothing changes. Labels spread through dense regions and stall at sparse borders. networkx's <code>label_propagation_communities</code> is the semi-synchronous version (Cordasco and Gargano, 2010). The widget uses a simpler variant, and says so: asynchronous, nodes updated one at a time in a fixed order, ties broken toward the smallest label. That makes it deterministic, which is why it gives 216 communities after 7 rounds every time you load the page.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Different algorithms, different counts<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>On the advisor network the widget's label propagation finds 216 communities. networkx's Louvain, run with seed 1 on exactly the same view, finds 159. Same nodes, same edges, a different number of groups. The advisor network also has 145 connected components, pieces with no path between them at all, so every algorithm must return at least 145 groups; the rest is a choice about how finely to split each piece.</p>
+        <p>Teach the count as a modelling output, like the number of clusters in k-means. If the editors ask "how many schools of physics were there?", the honest answer names the algorithm and its settings, and shows that the large groups are stable across methods even when the small ones are not. The five largest communities are a far safer thing to publish than the total.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Resolution, randomness and Leiden<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>networkx's <code>louvain_communities(G, weight='weight', resolution=1, threshold=1e-07, max_level=None, seed=None)</code> has two levers worth knowing. <code>resolution</code> sets the preferred community size: above 1 favours more, smaller communities, below 1 fewer, larger ones. <code>seed</code> matters because Louvain visits nodes in a random shuffled order; without a seed the partition, and the count, can change between runs. The 159 above is for seed 1. Louvain arrived in networkx 2.7, released on 28 February 2022.</p>
+        <p>Leiden (Traag, Waltman and van Eck, 2019) fixes a flaw the authors found in Louvain: it "may yield arbitrarily badly connected communities", including communities that are not even connected inside. Leiden adds a refinement step that guarantees connected communities, and the paper reports it is also faster. Microsoft's GraphRAG applies Leiden hierarchically to build its community summaries, which is where session 6 picks it up.</p>
+        <pre><code>import networkx as nx
+parts = nx.community.louvain_communities(G_advisor, seed=1)
+len(parts)          # compare with the widget's label propagation
+nx.community.modularity(G_advisor, parts)</code></pre>
+        <p>Run it yourself on the advisor view; try seeds 1 to 5 and two resolutions, and record how much the count moves.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>From a phone network to a warning.</strong> Blondel and colleagues introduced Louvain in 2008 and tested it on a network of 2.6 million mobile phone customers and on a web graph of 118 million nodes. Eleven years later Traag and colleagues showed the same method can return communities that are badly connected inside, and proposed Leiden. The arc is the lesson: a method can be fast, famous and useful for a decade and still return groups you should not take at face value.</p>
+    </div>
+  </section>
+
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Who connects Vellum's network</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Six steps in the widget below, no install. You read three centrality measures and the communities on the advisor network, then switch to the full graph and watch one hub take every measure and collapse the Duflo to Samuelson path. You finish with section 5 of Vellum's design note, written with the view named next to every number.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 372" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The hub trap mechanism. Left, the full graph: United States sits in the middle with spokes to every citizen, so any two of its 629 neighbours are 2 hops apart through it; it scores degree 629, betweenness 0.3657, PageRank 0.0245. Right, the advisor network: no country or prize nodes, so the path from Duflo to Samuelson is a chain of 7 real advisor ties, and the top bridge is August Kundt at 0.0709.">
+        <defs>
+          <filter id="k5dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="59" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+        </defs>
+        <style>
+          .k5dH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k5dL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k5dS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k5dP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k5dB { font: 800 11px Inter, sans-serif; fill: #6A4300; }
+          .k5dN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k5dH" x="20" y="26">THE HUB TRAP: ONE MODELLING CHOICE WINS EVERY MEASURE</text>
+
+        <g filter="url(#k5dSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="20" y="42" width="420" height="250" rx="12" transform="rotate(-0.5 230 167)" fill="#FFFFFF"/>
+          <rect x="460" y="42" width="400" height="250" rx="12" transform="rotate(0.5 660 167)" fill="#E9F5F2"/>
+          <g stroke="#C2D5D0" stroke-width="1.6">
+            <path d="M271.1 189.3 L360 231"/><path d="M247.0 190.3 L302 256"/><path d="M230.0 191.0 L230 265"/><path d="M213.0 190.3 L158 256"/><path d="M188.9 189.3 L100 231"/>
+            <path d="M188.9 150.7 L100 109"/><path d="M213.0 149.7 L158 84"/><path d="M230.0 149.0 L230 75"/><path d="M247.0 149.7 L302 84"/><path d="M271.1 150.7 L360 109"/>
+          </g>
+          <path d="M68 170 L167 170" stroke="#004238" stroke-width="3"/><path d="M293 170 L392 170" stroke="#004238" stroke-width="3"/>
+          <circle cx="360" cy="231" r="7" fill="#FFFFFF"/><circle cx="302" cy="256" r="7" fill="#FFFFFF"/><circle cx="230" cy="265" r="7" fill="#FFFFFF"/><circle cx="158" cy="256" r="7" fill="#FFFFFF"/><circle cx="100" cy="231" r="7" fill="#FFFFFF"/>
+          <circle cx="100" cy="109" r="7" fill="#FFFFFF"/><circle cx="158" cy="84" r="7" fill="#FFFFFF"/><circle cx="230" cy="75" r="7" fill="#FFFFFF"/><circle cx="302" cy="84" r="7" fill="#FFFFFF"/><circle cx="360" cy="109" r="7" fill="#FFFFFF"/>
+          <circle cx="60" cy="170" r="8" fill="#E9F5F2" stroke="#004238"/>
+          <circle cx="400" cy="170" r="8" fill="#E9F5F2" stroke="#004238"/>
+          <rect x="170" y="152" width="120" height="36" rx="8" transform="rotate(-1 230 170)" fill="#F4B860"/>
+          <g stroke="#C2D5D0" stroke-width="1.6">
+            <path d="M637 125 L606 70"/><path d="M774 90 L812 64"/><path d="M546 195 L520 150"/><path d="M682 160 L700 210"/>
+          </g>
+          <path d="M500 230 L546 195 L591 160 L637 125 L682 160 L728 125 L774 90 L820 125" stroke="#004238" stroke-width="2.6"/>
+          <circle cx="606" cy="70" r="6" fill="#FFFFFF"/><circle cx="812" cy="64" r="6" fill="#FFFFFF"/><circle cx="520" cy="150" r="6" fill="#FFFFFF"/><circle cx="700" cy="210" r="6" fill="#FFFFFF"/>
+          <circle cx="500" cy="230" r="8" fill="#FFFFFF"/><circle cx="546" cy="195" r="7" fill="#FFFFFF"/><circle cx="591" cy="160" r="7" fill="#FFFFFF"/><circle cx="637" cy="125" r="7" fill="#FFFFFF"/>
+          <circle cx="682" cy="160" r="7" fill="#FFFFFF"/><circle cx="728" cy="125" r="7" fill="#FFFFFF"/><circle cx="774" cy="90" r="7" fill="#FFFFFF"/><circle cx="820" cy="125" r="8" fill="#FFFFFF"/>
+        </g>
+
+        <text class="k5dP" x="36" y="64">FULL GRAPH</text>
+        <text class="k5dL" x="230" y="175" text-anchor="middle">United States</text>
+        <text class="k5dS" x="60" y="150" text-anchor="middle">citizen A</text>
+        <text class="k5dS" x="400" y="150" text-anchor="middle">citizen B</text>
+        <text class="k5dB" x="125" y="162" text-anchor="middle">hop 1</text>
+        <text class="k5dB" x="335" y="162" text-anchor="middle">hop 2</text>
+        <text class="k5dS" x="36" y="284">a few of its 629 spokes</text>
+
+        <text class="k5dP" x="476" y="64">ADVISOR NETWORK</text>
+        <text class="k5dS" x="500" y="256" text-anchor="middle">Duflo</text>
+        <text class="k5dS" x="820" y="150" text-anchor="middle">Samuelson</text>
+        <text class="k5dS" x="476" y="284">7 hops, every one a real advisor tie</text>
+
+        <text class="k5dS" x="20" y="314">any two of its neighbours are 2 hops apart</text>
+        <text class="k5dB" x="20" y="332">degree 629, betweenness 0.3657, PageRank 0.0245</text>
+        <text class="k5dS" x="460" y="314">no country or prize nodes: a path is a chain of people</text>
+        <text class="k5dB" x="460" y="332">top bridge: August Kundt, betweenness 0.0709</text>
+
+        <text class="k5dN" x="20" y="358">Real values from the widget. Full graph: 42 communities, the largest 1,521 nodes, led by United States.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - a node that stands for a category puts all its members two hops apart, and so sits on almost every path</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step">
+        <p><strong>Read degree on the advisor network.</strong> The widget opens on the advisor network with degree selected. Read the view size, the top five, and the path box underneath, which already shows Duflo to Samuelson.</p>
+        <div class="prompt-box good"><span class="label">★ Step 1 · degree, advisor network</span>1039 nodes, 965 undirected edges in this view.
+Ernest Rutherford ......... 15
+Joseph John Thomson ....... 10
+Wassily Leontief .......... 9
+Arnold Sommerfeld ......... 8
+Ralph H. Fowler ........... 8
+Shortest path: 7 hops, Esther Duflo to ... to Paul Samuelson</div>
+      </div>
+      <div class="step">
+        <p><strong>Switch Measure to betweenness and compare the names.</strong> Not one of the degree top five is here. Look each name up in the path box's list: these are the bridges.</p>
+        <div class="prompt-box good"><span class="label">★ Step 2 · betweenness, advisor network</span>August Kundt .............. 0.0709
+Georg Hermann Quincke ..... 0.0704
+Gabriel Lippmann .......... 0.0622
+Franz S. Exner ............ 0.0597
+Karl Herzfeld ............. 0.0589
+Only Lippmann won a Nobel Prize.</div>
+      </div>
+      <div class="step">
+        <p><strong>Switch to PageRank.</strong> The famous teachers return, and one new name appears: a node whose neighbours are themselves central.</p>
+        <div class="prompt-box good"><span class="label">★ Step 3 · PageRank, advisor network</span>Ernest Rutherford ......... 0.0051
+Joseph John Thomson ....... 0.0033
+Enrico Fermi .............. 0.0033
+Wassily Leontief .......... 0.0032
+Arnold Sommerfeld ......... 0.0029</div>
+      </div>
+      <div class="step">
+        <p><strong>Switch to communities.</strong> Read the count and the five largest. Ask yourself whether each group reads like a real school, and remember that Louvain finds 159 on this same view.</p>
+        <div class="prompt-box good"><span class="label">★ Step 4 · communities, advisor network</span>216 communities after 7 rounds.
+60 nodes · Ernest Rutherford, Joseph John Thomson, Ralph H. Fowler
+41 nodes · Wassily Leontief, H. Gregg Lewis, Werner Sombart
+37 nodes · Arnold Sommerfeld, Edward Teller, Peter Debye
+29 nodes · Hermann von Helmholtz, Robert Andrews Millikan, Johannes Peter Müller
+28 nodes · Adolf von Baeyer, Emil Fischer, Robert Bunsen</div>
+      </div>
+      <div class="step">
+        <p><strong>Switch Graph to the full graph and walk back through the measures.</strong> Betweenness takes a second or two here. Watch United States take every measure, and watch the path box: Duflo to Samuelson collapses to 2 hops.</p>
+        <div class="prompt-box good"><span class="label">★ Step 5 · the same measures, full graph</span>3507 nodes, 10245 undirected edges in this view.
+Degree      United States country · 629
+            Nobel Prize in Physiology or Medicine prize · 235
+            Nobel Prize in Physics prize · 230
+Betweenness United States country · 0.3657
+PageRank    United States country · 0.0245
+Communities 42 communities; largest 1521 nodes, led by United States
+Path        2 hops: Esther Duflo to Nobel Memorial Prize in Economic Sciences
+            to Paul Samuelson</div>
+      </div>
+      <div class="step">
+        <p><strong>Write section 5 of the design note.</strong> Name the view next to every number. That one habit is the difference between a finding and an artefact.</p>
+        <div class="prompt-box good"><span class="label">★ Step 6 · Vellum graph design note, section 5</span>Network finding (real Wikidata graph, computed in browser):
+- View to trust for "who connects scientists": the advisor network
+  (1,039 people, 965 ADVISED edges, undirected).
+- Most direct ties: Ernest Rutherford (15). Top bridge: August Kundt
+  (betweenness 0.0709), not a laureate.
+- Communities: 216 by label propagation, 159 by Louvain; publish the
+  five largest groups, never the total.
+- Rejected: the full graph, where United States wins every measure
+  (degree 629) because countries and prizes are nodes.</div>
+      </div>
+    </div>
+
+    <div class="kgr-algo" data-mode="advisor" data-measure="degree"></div>
+
+    <div class="callout tip">
+      <p><strong>Ask "what kind of node is this?" before "who is first?".</strong> The widget prints each node's kind next to its name: person, institution, country or prize. On the advisor network every winner is a person. The moment a country or a prize tops a list, stop and choose a view; do not explain the ranking, explain the schema.</p>
+    </div>
+  </section>
+
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before session 6</h2>
+      <span class="tag exercise">30 min</span>
+    </div>
+    <ol>
+      <li><strong>Pick two people you know in the path box</strong> and compute their shortest path on both views. Write down which hops are relationships and which are shared categories.</li>
+      <li><strong>Explain one bridge.</strong> Take Franz S. Exner or Karl Herzfeld from the betweenness list and use the query box from session 3 to find who they advised. Write two sentences on which lineages they join.</li>
+      <li><strong>Find the hub in your own data.</strong> In a graph or a join-heavy model you work with, name the node type most likely to win degree for a modelling reason (a country, a status, a default category). Say how you would drop it or down-weight it.</li>
+      <li><strong>Run Louvain yourself,</strong> if you have Python to hand: build the advisor view in networkx, run <code>louvain_communities</code> with seeds 1 to 5, and record how far the count moves from the 159 measured at seed 1.</li>
+    </ol>
+  </section>
+
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 5 gets stamped in your passport.</p>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · Why does August Kundt top betweenness on the advisor network when he is not in the degree top five?</p>
+      <button class="qopt" type="button">A · He won a Nobel Prize, and laureates are weighted higher</button>
+      <button class="qopt" type="button">B · Betweenness counts the most direct ties, and he has more than Rutherford</button>
+      <button class="qopt" type="button">C · Many shortest paths between separate lineages have to pass through him, even though his own tie count is modest</button>
+      <button class="qopt" type="button">D · The widget's betweenness is a rounding artefact of PageRank</button>
+      <p class="qwhy">Betweenness counts the shortest paths between other pairs that run through a node. Kundt joins branches of the academic family tree, so he scores 0.0709 without many ties. He is not a laureate, and the widget's betweenness matches networkx to 1e-16.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · On the full graph, United States tops degree (629), betweenness (0.3657) and PageRank (0.0245). What does that tell Vellum?</p>
+      <button class="qopt" type="button">A · That citizenship was modelled as a node every citizen links to, so the hub is an artefact of the schema, not a measure of influence</button>
+      <button class="qopt" type="button">B · That the United States is the most influential actor in the history of science</button>
+      <button class="qopt" type="button">C · That betweenness is broken on graphs above 3,000 nodes</button>
+      <button class="qopt" type="button">D · That PageRank should be run with alpha 0.5 instead of 0.85</button>
+      <p class="qwhy">A node with hundreds of spokes puts any two of its neighbours two hops apart, so it sits on a huge share of all shortest paths and collects rank from everyone. The fix is choosing the view (the advisor network) or dropping or down-weighting hub types, not tuning the algorithm.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="3">
+      <p class="qtext">3 · Label propagation finds 216 communities on the advisor network and Louvain finds 159. Which is right?</p>
+      <button class="qopt" type="button">A · 216, because it was computed in the browser</button>
+      <button class="qopt" type="button">B · 159, because Louvain is newer and therefore more accurate</button>
+      <button class="qopt" type="button">C · Neither: the graph must contain an error if two algorithms disagree</button>
+      <button class="qopt" type="button">D · Both are valid outputs of different methods; the count is a modelling choice, so report the method and the stable large groups</button>
+      <p class="qwhy">Label propagation spreads the most common neighbour label; Louvain greedily maximises modularity and depends on its seed and resolution. Different objectives give different borders on the same edges. Neither is a fact about the world.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">NetworkX 3.7 documentation</span><span class="note">shortest_path, degree_centrality, betweenness_centrality, pagerank, label_propagation_communities, louvain_communities, greedy_modularity_communities: signatures, defaults and normalisation</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">NetworkX 2.7 release notes (28 February 2022)</span><span class="note">Louvain added as louvain_communities and louvain_partitions</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Blondel et al. (2008), Fast unfolding of communities in large networks, J. Stat. Mech. P10008</span><span class="note">The Louvain method; the 2.6 million customer phone network and the 118 million node web graph</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Traag, Waltman and van Eck (2019), From Louvain to Leiden, Scientific Reports 9, 5233</span><span class="note">Badly connected Louvain communities; Leiden guarantees connected ones</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Page, Brin, Motwani and Winograd (1999), The PageRank Citation Ranking, Stanford InfoLab Technical Report 1999-66</span><span class="note">Reported: found through bibliographic records; the report server would not load</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Neo4j Cypher Manual, shortest paths</span><span class="note">SHORTEST k replaces shortestPath(); used in the Self-study card</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Wikidata extract (CC0, fetched 2026-11-16)</span><span class="note">The advisor network and full graph; every centrality, community and path value is computed on it in the page</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Vellum Press and its design note</span><span class="note">Constructed; every number in it is computed on the real graph</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 5 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Choose the view first</b><span>Which node and edge types count as a connection? Duflo to Samuelson is 7 hops or 2.</span></div>
+      <div class="cheat-item"><b>Degree, betweenness, PageRank</b><span>Most ties; most paths through you; ties to important nodes (alpha 0.85).</span></div>
+      <div class="cheat-item"><b>Bridges are not stars</b><span>Top betweenness, August Kundt 0.0709, is not a laureate and not in the degree top five.</span></div>
+      <div class="cheat-item"><b>The hub trap</b><span>Countries and prizes as nodes win every measure. Check the kind of every top node.</span></div>
+      <div class="cheat-item"><b>Counts are outputs</b><span>216 by label propagation, 159 by Louvain on one view. Publish method and big groups.</span></div>
+      <div class="cheat-item"><b>Louvain, then Leiden</b><span>Louvain needs a seed; Leiden guarantees connected communities and feeds GraphRAG.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p>You can now ask the graph about itself and say which view a number came from. Session 6 puts the graph in front of a language model: Microsoft's GraphRAG, which builds Leiden communities and summarises them, the evidence for and against its gains, text-to-Cypher, and the cost of each route. Vellum closes its design note with a decision: graph, vectors or both.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 5 of 6 · learn-knowledge-graphs-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="04-the-multi-hop-lab.html">← Prev: The multi-hop lab</a> &nbsp;·&nbsp; <a href="06-graphrag-when-the-graph-feeds-the-llm.html">Next: GraphRAG: when the graph feeds the LLM →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/kgr-sample.js?v=1"></script>
+<script src="../assets/kgr-live.js?v=4"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

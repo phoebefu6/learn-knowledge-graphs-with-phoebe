@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 3 of 6. Cypher MATCH patterns, variable-length and quantified paths, SPARQL basic graph patterns and property paths, and the same questions written in both. Four queries run in the page on real Wikidata rows, constructed Vellum Press case.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Cypher and SPARQL, side by side - learn knowledge graphs with phoebe">
+<meta property="og:description" content="Session 3 of 6. One pattern, two languages. Max Planck's students who won, Esther Duflo's academic ancestors, and why 11 paths come back as 10 rows.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/courses/03-cypher-and-sparql-side-by-side.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Cypher and SPARQL, side by side - learn knowledge graphs with phoebe">
+<meta name="twitter:description" content="Session 3 of 6. Patterns, paths and property paths, in Cypher and SPARQL.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 3 · Cypher and SPARQL, side by side - learn knowledge graphs with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-knowledge-graphs-with-phoebe</a> / Session 3 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Knowledge Graphs with Phoebe · Session 3 of 6</div>
+    <h1>Cypher and SPARQL, <span class="accent">side by side</span></h1>
+    <p class="sub">Two query languages, one idea: you draw the shape of the answer and the engine finds every place in the graph where that shape fits. Cypher draws it as ASCII art over a property graph; SPARQL writes it as triple patterns over RDF. Tonight you read both, learn how each says "one to three steps up", and run four real queries on around a thousand Nobel laureates, in your browser.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Core</span>
+      <span class="chip audience">Data and ML engineers</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · Patterns, paths, property paths</span>
+      <span class="a3" style="flex:5">18-40 · Build-along: four queries</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we start</h2>
+    </div>
+    <p class="lede">Session 1 sorted questions by hop count. Session 2 chose a model: a property graph for the questions, with Wikidata's statements underneath. Tonight the questions become queries. The skill is less about syntax than about reading a pattern as a small picture of the answer, then knowing which parts of the picture are fixed (a name, a label, a relation type) and which are holes the engine fills (the variables).</p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">★ Build-along = do it yourself</span>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Constructed Vellum example</span>
+      <p><strong>Vellum Press</strong>, the invented academic publisher, has a design note with a question sort and a graph model. Its editors now want the questions as queries they can rerun when the data changes. The graph under every query on this page is the real Wikidata extract from session 1 (CC0, fetched 2026-11-16): 3,507 nodes and 10,954 typed edges.</p>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> Section 3 of Vellum's graph design note: four queries over the laureate graph, each with its hop count and the row count you predicted and then read off the query box. Plus each one rewritten in SPARQL, ready to run against live Wikidata on your own time.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers Cypher MATCH patterns</span>
+      <h2>A pattern is a picture of the answer</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">Cypher's <code>MATCH</code> clause takes an ASCII-art drawing: nodes in parentheses, relationships in square brackets with an arrow. Every name you leave unfilled is a variable. The engine tries the drawing against the graph and returns one row per distinct value of the variable you ask for in <code>RETURN</code>.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The pattern p named Max Planck, ADVISED to s, WON to z, laid over the real subgraph. Max Planck has four doctoral students in the extract: Max von Laue, Gustav Ludwig Hertz, Walther Bothe and Richard Becker. The first three each have a WON edge to the Nobel Prize in Physics, so the pattern matches three times and s binds to three people. Richard Becker has no WON edge and is not matched. RETURN s gives 3 rows, 3 paths, 6 facts.">
+        <defs>
+          <filter id="k3aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="53" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <marker id="k3aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k3aH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k3aL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k3aS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k3aP { font: 800 11px Inter, sans-serif; fill: #002B25; }
+          .k3aC { font: 500 12px ui-monospace, Menlo, monospace; fill: #11211E; }
+          .k3aN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k3aH" x="30" y="28">ONE PATTERN, LAID OVER THE REAL SUBGRAPH</text>
+
+        <g filter="url(#k3aSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="42" width="820" height="44" rx="10" transform="rotate(-0.3 440 64)" fill="#E9F5F2" stroke="#004238"/>
+          <rect x="50" y="170" width="150" height="40" rx="20" transform="rotate(-1 125 190)" fill="#E9F5F2"/>
+          <rect x="330" y="122" width="172" height="36" rx="18" transform="rotate(1 416 140)" fill="#FFFFFF"/>
+          <rect x="330" y="177" width="172" height="36" rx="18" transform="rotate(-1.2 416 195)" fill="#FFFFFF"/>
+          <rect x="330" y="232" width="172" height="36" rx="18" transform="rotate(0.8 416 250)" fill="#FFFFFF"/>
+          <rect x="330" y="290" width="172" height="36" rx="18" transform="rotate(-0.6 416 308)" fill="#FFFFFF" stroke-dasharray="6 5"/>
+          <rect x="660" y="168" width="180" height="44" rx="6" transform="rotate(0.8 750 190)" fill="#FFFFFF"/>
+          <rect x="620" y="278" width="230" height="56" rx="8" transform="rotate(-1 735 306)" fill="#F4B860"/>
+          <path d="M202 184 C250 160 280 145 326 140" marker-end="url(#k3aAr)"/>
+          <path d="M202 192 C250 194 290 195 326 195" marker-end="url(#k3aAr)"/>
+          <path d="M202 200 C250 225 280 245 326 250" marker-end="url(#k3aAr)"/>
+          <path d="M196 210 C240 270 280 300 326 306" stroke-dasharray="6 5" marker-end="url(#k3aAr)"/>
+          <path d="M504 140 C570 150 610 170 656 182" marker-end="url(#k3aAr)"/>
+          <path d="M504 195 C570 194 610 192 656 190" marker-end="url(#k3aAr)"/>
+          <path d="M504 250 C570 238 610 212 656 198" marker-end="url(#k3aAr)"/>
+        </g>
+
+        <text class="k3aC" x="48" y="69">MATCH (p {name:"Max Planck"})-[:ADVISED]-&gt;(s)-[:WON]-&gt;(z) RETURN s</text>
+
+        <text class="k3aP" x="56" y="158">p binds here</text>
+        <text class="k3aP" x="336" y="112">s binds here</text>
+        <text class="k3aP" x="666" y="158">z binds here</text>
+        <text class="k3aS" x="236" y="126">ADVISED</text>
+        <text class="k3aS" x="566" y="126">WON</text>
+
+        <text class="k3aL" x="80" y="195">Max Planck</text>
+        <text class="k3aL" x="348" y="145">Max von Laue</text>
+        <text class="k3aL" x="348" y="200">Gustav Ludwig Hertz</text>
+        <text class="k3aL" x="348" y="255">Walther Bothe</text>
+        <text class="k3aL" x="348" y="313">Richard Becker</text>
+        <text class="k3aS" x="336" y="346">no WON edge, so no match</text>
+        <text class="k3aL" x="676" y="195">Nobel Prize in Physics</text>
+        <text class="k3aS" x="666" y="234">all three bind z to one node</text>
+
+        <text class="k3aL" x="638" y="302">RETURN s: 3 rows</text>
+        <text class="k3aL" x="638" y="320">3 paths, 6 facts used</text>
+
+        <text class="k3aN" x="30" y="384">Real Wikidata rows from the extract. Arrows point from advisor to student, as the ADVISED edge is stored.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the pattern is tried from the anchor outward; only the chains that complete become rows</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Reading a pattern, left to right<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The Neo4j Cypher Manual's own example is <code>MATCH (:Movie {title: 'Wall Street'})&lt;-[:ACTED_IN]-(actor:Person) RETURN actor.name</code>. Read it as four pieces. <code>(...)</code> is a node; inside it, an optional variable, an optional <code>:Label</code>, an optional property map <code>{key: value}</code> that pins the node down. <code>-[:TYPE]-&gt;</code> is a relationship of one type, with its direction shown by the arrow. Anything without a value is a hole for the engine to fill.</p>
+        <p>In the figure, <code>p</code> is pinned to one person by name, so the search starts there. <code>s</code> and <code>z</code> are holes. The engine follows Planck's four ADVISED edges, then for each student looks for a WON edge. Three chains complete, one does not. <code>RETURN s</code> hands back the three people who sat in the <code>s</code> position. Notice that <code>z</code> is the same Physics prize node three times: a variable can bind to the same value on many paths.</p>
+        <p>Direction matters. Flip the first arrow to <code>&lt;-[:ADVISED]-</code> and you are asking for Planck's own doctoral advisor, a different question with a different answer.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Relationship uniqueness: why a loop does not spin forever<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Within one matched path, Cypher never uses the same relationship twice. Nodes may repeat; edges may not. The query box on this page follows the same rule. It is what keeps a variable-length pattern finite on a graph with cycles.</p>
+        <p>This graph has one, and it is a data artefact worth knowing: Wikidata lists Otto Hahn as both a doctoral advisor and a doctoral student of Theodor Zincke, while Hahn lists Zincke as his advisor. So the extract holds a two-node loop, Hahn advised Zincke and Zincke advised Hahn. A walk can go round it once, because the two edges are different relationships; it cannot go round twice. The graph is only as true as its edges, and the query language will faithfully walk a wrong one.</p>
+        <p>The current Cypher Manual (Cypher 25) adds explicit path modes on top of this default: paths with repeated nodes and relationships (introduced in Neo4j 2025.06) and acyclic paths (Neo4j 2026.03), both marked "Cypher 25 only".</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>openCypher, and where it is heading<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Cypher began at Neo4j; openCypher is the open specification other engines implement. The openCypher project states that its specification "evolves towards ISO/IEC 39075 GQL", the ISO graph query language published on 2024-04-12 that session 2 introduced.</p>
+        <p>How close is Cypher to GQL already? Neo4j's CTO has been quoted saying Cypher users are "already 95% there". Treat that as a vendor claim, reported in the trade press, not a measurement. One concrete difference reported in the same coverage: GQL uses <code>INSERT</code> where Cypher uses <code>CREATE</code>. Part 2 shows the place where the Cypher Manual itself marks a syntax as not GQL conformant.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Trying real Cypher costs nothing.</strong> Neo4j Desktop is free on Linux, Mac and Windows. AuraDB Free, the hosted tier, needs no credit card; its current quotas page sets the limits at 200,000 nodes, 400,000 relationships and 1GB of storage. Older Neo4j pages still quote 50,000 nodes and 175,000 relationships for the free tier: those figures are stale, so check the quotas page rather than a blog post. Tonight's graph, 3,507 nodes and 10,954 edges, would fit many times over.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers variable-length paths, quantified path patterns, SHORTEST</span>
+      <h2>Saying "one to three steps up"</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">A fixed pattern names every hop. A variable-length pattern names a range: <code>-[:ADVISED*1..3]-&gt;</code> means one, two or three ADVISED edges in a row. That one change turns "Duflo's advisor" into "Duflo's academic ancestors, three generations up", and it is where rows and paths stop being the same number.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 430" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Esther Duflo's academic ancestors up to three generations, as the extract holds them. Depth 1: Abhijit Banerjee and Joshua Angrist. Depth 2: Eric Maskin, who advised Banerjee; David Card, Whitney K. Newey and Orley Ashenfelter, who advised Angrist. Depth 3: Kenneth Arrow, who advised Maskin; Orley Ashenfelter again, who advised Card; Jerry A. Hausman, who advised Newey; Stephen Goldfeld and Albert Rees, who advised Ashenfelter. Eleven paths reach ten distinct people, because Ashenfelter is reached at depth 2 and at depth 3.">
+        <defs>
+          <filter id="k3bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="61" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <marker id="k3bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k3bH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k3bL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k3bS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k3bP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k3bB { font: 800 11px Inter, sans-serif; fill: #6A4300; }
+          .k3bN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k3bH" x="30" y="24">MATCH (p {name:"Esther Duflo"})&lt;-[:ADVISED*1..3]-(a) RETURN a, DRAWN AS THE WALK</text>
+
+        <g filter="url(#k3bSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="20" y="172" width="130" height="36" rx="18" transform="rotate(-1 85 190)" fill="#E9F5F2"/>
+          <rect x="220" y="72" width="150" height="36" rx="18" transform="rotate(1 295 90)" fill="#FFFFFF"/>
+          <rect x="220" y="252" width="150" height="36" rx="18" transform="rotate(-1.2 295 270)" fill="#FFFFFF"/>
+          <rect x="440" y="72" width="150" height="36" rx="18" transform="rotate(-0.8 515 90)" fill="#FFFFFF"/>
+          <rect x="440" y="172" width="150" height="36" rx="18" transform="rotate(1.2 515 190)" fill="#FFFFFF"/>
+          <rect x="440" y="232" width="150" height="36" rx="18" transform="rotate(-1 515 250)" fill="#FFFFFF"/>
+          <rect x="440" y="312" width="150" height="36" rx="18" transform="rotate(0.8 515 330)" fill="#FFFFFF"/>
+          <rect x="680" y="72" width="150" height="36" rx="18" transform="rotate(1 755 90)" fill="#FFFFFF"/>
+          <rect x="680" y="152" width="150" height="36" rx="18" transform="rotate(-1.4 755 170)" fill="#F4B860"/>
+          <rect x="680" y="232" width="150" height="36" rx="18" transform="rotate(0.9 755 250)" fill="#FFFFFF"/>
+          <rect x="680" y="302" width="150" height="36" rx="18" transform="rotate(-0.7 755 320)" fill="#FFFFFF"/>
+          <rect x="680" y="352" width="150" height="36" rx="18" transform="rotate(1.1 755 370)" fill="#FFFFFF"/>
+          <path d="M678 90 L596 90" marker-end="url(#k3bAr)"/>
+          <path d="M438 90 L376 90" marker-end="url(#k3bAr)"/>
+          <path d="M218 92 C185 110 170 160 154 180" marker-end="url(#k3bAr)"/>
+          <path d="M218 268 C185 255 170 220 154 200" marker-end="url(#k3bAr)"/>
+          <path d="M438 192 C405 205 392 245 376 262" marker-end="url(#k3bAr)"/>
+          <path d="M438 250 C410 254 395 264 376 268" marker-end="url(#k3bAr)"/>
+          <path d="M438 328 C405 318 392 292 376 278" marker-end="url(#k3bAr)"/>
+          <path d="M678 170 C640 172 620 182 596 188" marker-end="url(#k3bAr)"/>
+          <path d="M678 250 L596 250" marker-end="url(#k3bAr)"/>
+          <path d="M678 320 C640 322 620 328 596 330" marker-end="url(#k3bAr)"/>
+          <path d="M678 368 C640 364 620 342 596 334" marker-end="url(#k3bAr)"/>
+        </g>
+
+        <text class="k3bP" x="220" y="54">depth 1 · 2 paths</text>
+        <text class="k3bP" x="440" y="54">depth 2 · 4 paths</text>
+        <text class="k3bP" x="680" y="54">depth 3 · 5 paths</text>
+        <text class="k3bS" x="20" y="160">anchor p</text>
+
+        <text class="k3bL" x="44" y="195">Esther Duflo</text>
+        <text class="k3bL" x="236" y="95">Abhijit Banerjee</text>
+        <text class="k3bL" x="250" y="275">Joshua Angrist</text>
+        <text class="k3bL" x="474" y="95">Eric Maskin</text>
+        <text class="k3bL" x="476" y="195">David Card</text>
+        <text class="k3bL" x="456" y="255">Whitney K. Newey</text>
+        <text class="k3bL" x="456" y="335">Orley Ashenfelter</text>
+        <text class="k3bL" x="706" y="95">Kenneth Arrow</text>
+        <text class="k3bL" x="696" y="175">Orley Ashenfelter</text>
+        <text class="k3bB" x="690" y="208">same person, second path</text>
+        <text class="k3bL" x="698" y="255">Jerry A. Hausman</text>
+        <text class="k3bL" x="698" y="325">Stephen Goldfeld</text>
+        <text class="k3bL" x="718" y="375">Albert Rees</text>
+
+        <text class="k3bN" x="20" y="414">2 + 4 + 5 = 11 paths, but Ashenfelter appears twice, so RETURN a gives 10 rows. Arrows: advisor to student.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - a range walks every depth at once; one ancestor reached by two routes is two paths and one row</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What <code>*m..n</code> means, exactly<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <table class="clean">
+          <tr><th>Written</th><th>Means (Cypher Manual)</th></tr>
+          <tr><td><code>-[:ADVISED*]-&gt;</code></td><td>1 or more hops. The lower bound defaults to 1, so this is not a Kleene star</td></tr>
+          <tr><td><code>-[:ADVISED*3]-&gt;</code></td><td>exactly 3 hops</td></tr>
+          <tr><td><code>-[:ADVISED*1..3]-&gt;</code></td><td>1 to 3 hops</td></tr>
+          <tr><td><code>-[:ADVISED*..3]-&gt;</code></td><td>1 to 3 hops (lower bound defaults to 1)</td></tr>
+          <tr><td><code>-[:ADVISED*0..3]-&gt;</code></td><td>0 to 3 hops: the anchor itself counts as a match</td></tr>
+        </table>
+        <p>In the figure the arrow points into Duflo, <code>&lt;-[:ADVISED*1..3]-</code>, so the walk goes from student to advisor, up the tree. Each depth contributes its own paths: 2 at depth 1, 4 at depth 2, 5 at depth 3. You can check each band in the query box by changing <code>*1..3</code> to <code>*1</code>, <code>*2</code> and <code>*3</code>.</p>
+        <p>The tell is the gap between paths and rows. Orley Ashenfelter advised Joshua Angrist (depth 2) and also advised David Card, who advised Angrist (depth 3). Two different paths end at him. <code>RETURN a</code> lists distinct people, so the 11 paths collapse to 10 rows. This teaching box always returns distinct values and prints the path count beside them, so the difference stays visible; in Neo4j, decide on purpose whether your <code>RETURN</code> needs <code>DISTINCT</code>.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Quantified path patterns, SHORTEST and GQL<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Since Neo4j 5.9 Cypher has a second way to write repetition, borrowed from GQL: <strong>quantified path patterns</strong> and <strong>quantified relationships</strong>. The quantifiers are <code>{m,n}</code>, <code>{n}</code>, <code>{m,}</code>, <code>{,n}</code>, <code>+</code> (meaning <code>{1,}</code>) and <code>*</code> (meaning <code>{0,}</code>). Notice that here <code>*</code> starts at zero, unlike the old bare <code>*</code>, which starts at one.</p>
+        <p>The manual gives the equivalence: <code>(a)-[:KNOWS*3..5]-&gt;(b)</code> is the same as <code>(a) (()-[:KNOWS]-&gt;()){3,5} (b)</code>. A quantified relationship is the short form, <code>-[:NEXT]-&gt;{1,10}</code>. The quantified path pattern can repeat a whole sub-pattern, including nodes with labels, which the old syntax cannot.</p>
+        <p>The old syntax still works, and the current manual says so plainly: "This syntax is still available but it is not GQL conformant." The same holds for shortest paths: <code>SHORTEST k</code> (with <code>ALL SHORTEST</code>, <code>ANY</code> and <code>SHORTEST k GROUPS</code>), as in <code>MATCH p = SHORTEST 1 (a)-[:LINK]-+(b)</code>, "functionally replaces and extends" <code>shortestPath()</code> and <code>allShortestPaths()</code>, which "can still be used, but they are not GQL conformant." Session 5 computes shortest paths in the page.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Why the box caps a bare <code>*</code> at 4<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Real Cypher lets a bare <code>*</code> run as deep as the graph goes. The query box on these pages is a teaching subset, and it stops a bare <code>*</code> at 4 hops, which it says on its face. On Duflo the difference is visible: <code>*1..3</code> gives 10 rows over 11 paths; a bare <code>*</code> (so 1 to 4 here) gives 14 rows over 17 paths, adding a fourth generation of ancestors.</p>
+        <p>The cap exists for the same reason a production database needs one: an unbounded walk from a well-connected node can touch a large share of the graph. On a real system, bound your ranges on purpose, and anchor the pattern on a named node so the walk starts small.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>The manual is mid-migration, and so is your code.</strong> Neo4j's current Cypher Manual documents both repetition syntaxes side by side, and keeps adding to the new one: as of Neo4j 2025.06 the <code>k</code> in <code>SHORTEST k</code> can be a parameter. Queries written with <code>*1..3</code> and <code>shortestPath()</code> keep running; new code that may one day move to another GQL engine is safer in the quantified form.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers SPARQL basic graph patterns and property paths</span>
+      <h2>The same questions in SPARQL</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">SPARQL 1.1, a W3C Recommendation of 21 March 2013, queries RDF. Instead of drawing a chain, you list triple patterns, subject, predicate, object, with <code>?variables</code> as holes. The SPARQL 1.1 text puts it in one line: "Basic graph patterns are sets of triple patterns." Shared variables are what join the triples into a chain.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two questions written in Cypher on the left and SPARQL on the right. Max Planck's students who won: Cypher walks ADVISED from Planck to s, then WON; SPARQL writes ?s wdt:P184 ?planck, because Wikidata's doctoral advisor property points from student to advisor, then ?s wdt:P166 ?prize. Esther Duflo's ancestors: Cypher writes less-than ADVISED star 1 to 3; SPARQL writes ?duflo wdt:P184 plus ?a, which means one or more steps with no upper bound.">
+        <defs>
+          <filter id="k3cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="67" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+        </defs>
+        <style>
+          .k3cH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k3cP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k3cC { font: 500 11px ui-monospace, Menlo, monospace; fill: #11211E; white-space: pre; }
+          .k3cS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k3cB { font: 800 11px Inter, sans-serif; fill: #6A4300; }
+          .k3cN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k3cH" x="30" y="28">ONE QUESTION, TWO LANGUAGES</text>
+        <text class="k3cP" x="40" y="58">Cypher, property graph</text>
+        <text class="k3cP" x="460" y="58">SPARQL, Wikidata as RDF</text>
+
+        <g filter="url(#k3cSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="70" width="400" height="124" rx="12" transform="rotate(-0.4 230 132)" fill="#FFFFFF"/>
+          <rect x="450" y="70" width="400" height="124" rx="12" transform="rotate(0.4 650 132)" fill="#E9F5F2" stroke="#004238"/>
+          <rect x="458" y="125" width="170" height="18" rx="4" transform="rotate(-0.8 543 134)" fill="#F4B860" stroke="none"/>
+          <rect x="30" y="214" width="400" height="118" rx="12" transform="rotate(0.4 230 273)" fill="#FFFFFF"/>
+          <rect x="450" y="214" width="400" height="118" rx="12" transform="rotate(-0.4 650 273)" fill="#E9F5F2" stroke="#004238"/>
+        </g>
+
+        <text class="k3cC" x="46" y="96">MATCH (p:Person {name:"Max Planck"})</text>
+        <text class="k3cC" x="46" y="116">      -[:ADVISED]-&gt;(s)</text>
+        <text class="k3cC" x="46" y="136">      -[:WON]-&gt;(z:Prize)</text>
+        <text class="k3cC" x="46" y="156">RETURN s</text>
+        <text class="k3cS" x="46" y="182">the arrow points advisor to student</text>
+
+        <text class="k3cC" x="466" y="96">SELECT ?s WHERE {</text>
+        <text class="k3cC" x="466" y="116">  ?planck rdfs:label "Max Planck"@en .</text>
+        <text class="k3cC" x="466" y="138">  ?s wdt:P184 ?planck .</text>
+        <text class="k3cC" x="466" y="158">  ?s wdt:P166 ?prize . }</text>
+        <text class="k3cB" x="466" y="182">P184 (doctoral advisor) points student to advisor</text>
+
+        <text class="k3cC" x="46" y="240">MATCH (p:Person {name:"Esther Duflo"})</text>
+        <text class="k3cC" x="46" y="260">      &lt;-[:ADVISED*1..3]-(a)</text>
+        <text class="k3cC" x="46" y="280">RETURN a</text>
+        <text class="k3cS" x="46" y="320">1 to 3 hops: the bounds sit in the pattern</text>
+
+        <text class="k3cC" x="466" y="240">SELECT ?a WHERE {</text>
+        <text class="k3cC" x="466" y="260">  ?duflo rdfs:label "Esther Duflo"@en .</text>
+        <text class="k3cC" x="466" y="280">  ?duflo wdt:P184+ ?a . }</text>
+        <text class="k3cS" x="466" y="320">P184+ is 1 or more steps, with no upper bound</text>
+
+        <text class="k3cN" x="30" y="360">Not run on this page: paste the SPARQL at query.wikidata.org. It reads live Wikidata, not this extract.</text>
+        <text class="k3cN" x="30" y="382">P166 is any award received; step 5 restricts ?prize to the six Nobel prize items.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - same chain, different spelling; the one real trap is which way the stored edge points</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>A basic graph pattern is a Cypher pattern, unrolled<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Take the Cypher chain <code>(p)-[:ADVISED]-&gt;(s)-[:WON]-&gt;(z)</code> and cut it at every node. You get two triples: one relation each, joined because <code>s</code> appears in both. That is exactly a SPARQL basic graph pattern. The dot ends each triple pattern; a variable used twice is the join.</p>
+        <p>On Wikidata the predicates are numbered properties with a prefix. <code>wdt:P184</code> is doctoral advisor, <code>wdt:P185</code> doctoral student, <code>wdt:P166</code> award received, <code>wdt:P69</code> educated at. Items use <code>wd:</code>, as in <code>wd:Q38104</code>, the Nobel Prize in Physics. Our graph renamed these to ADVISED, WON, EDUCATED_AT and turned P184 around so ADVISED always points advisor to student. When you translate back, you have to turn it around again, which is the highlighted line in the figure.</p>
+        <p>Anchoring by label is convenient for reading but fragile. While building the extract, an English-only label request returned no name for Marie Curie, because many items now carry their English name only as a "mul" (default for all languages) label. If an <code>@en</code> label match comes back empty, name the item by its Q-number instead. Hover a name in the query box below to see its Q-number.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Property paths vs variable-length relationships<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <table class="clean">
+          <tr><th>SPARQL 1.1 property path</th><th>Means</th><th>Nearest Cypher</th></tr>
+          <tr><td><code>p+</code></td><td>one or more</td><td><code>-[:P*]-&gt;</code> or <code>-[:P]-&gt;+</code></td></tr>
+          <tr><td><code>p*</code></td><td>zero or more</td><td><code>-[:P]-&gt;*</code> (quantified form)</td></tr>
+          <tr><td><code>p?</code></td><td>zero or one</td><td><code>-[:P*0..1]-&gt;</code></td></tr>
+          <tr><td><code>p/q</code></td><td>p then q (a sequence)</td><td><code>-[:P]-&gt;()-[:Q]-&gt;</code></td></tr>
+          <tr><td><code>^p</code></td><td>p walked backwards (inverse)</td><td>flip the arrow: <code>&lt;-[:P]-</code></td></tr>
+          <tr><td><code>p|q</code></td><td>p or q (alternative)</td><td><code>-[:P|Q]-&gt;</code></td></tr>
+        </table>
+        <p>Two consequences. First, <code>?s wdt:P184 ?planck</code> and <code>?planck ^wdt:P184 ?s</code> say the same thing; the caret lets you keep the anchor on the left, the way Cypher reads. Second, the six operators above have no numeric range like <code>1..3</code>. To bound the depth in SPARQL you spell it out with sequence and alternative: <code>(wdt:P184|wdt:P184/wdt:P184|wdt:P184/wdt:P184/wdt:P184)</code> is one to three steps. Step 5 of the build-along uses exactly that.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Truthy <code>wdt:</code> vs <code>p:</code> / <code>ps:</code> / <code>pq:</code>: when you need the year<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><code>wdt:</code> is the truthy shortcut: it links an entity straight to a value ("Truthy assertions about the data, links entity to value directly"), using the best-ranked statements only. It cannot see qualifiers, because a qualifier hangs off the statement, and the shortcut skips the statement node.</p>
+        <p>The prize year is a qualifier (P585, point in time) on the award statement. To reach it you walk through the statement: <code>p:</code> from the item to the statement node, <code>ps:</code> from the statement to its value, <code>pq:</code> from the statement to a qualifier. The query that fetched this graph's 1,005 award statements did exactly that:</p>
+        <pre class="code">SELECT ?p ?prize ?year WHERE {
+  VALUES ?prize { wd:Q38104 wd:Q44585 wd:Q80061 wd:Q37922 wd:Q35637 wd:Q47170 }
+  ?p p:P166 ?st . ?st ps:P166 ?prize . ?p wdt:P31 wd:Q5 .
+  OPTIONAL { ?st pq:P585 ?t . BIND(YEAR(?t) AS ?year) }
+}</pre>
+        <p>Read it as Cypher: <code>(p)-[st:WON]-&gt;(prize)</code> with <code>st.year</code> as a property on the relationship. The property graph puts the year on the edge; RDF needs a node in the middle to hold it. That is the modelling difference from session 2, showing up as query syntax.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>The public endpoint has a budget.</strong> The Wikidata Query Service user manual sets a hard deadline of 60 seconds per query. Each client (user agent plus IP) gets 60 seconds of processing time per 60-second window, 30 error queries per minute and 5 parallel queries per IP; over that, it answers HTTP 429 with a Retry-After header. Wikimedia's User-Agent policy asks scripts to send a descriptive User-Agent with a way to contact the operator; generic or missing agents get HTTP 403. Building this graph hit the 429 wall, and the Wikidata API route avoided it. Browser use at query.wikidata.org is fine; scripts need manners.</p>
+    </div>
+  </section>
+
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Four queries over the laureates</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Six steps, no install. Four of Vellum's desk questions (Constructed Vellum example) become four patterns. For each one you write it, predict the row count before you run it, then run it in the query box below and read rows, paths and facts. Then you rewrite all four in SPARQL to run later, and file section 3 of the design note.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 370" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four query cards with their pattern shapes and results from the query box. 1, Dorothy Hodgkin's prize: one hop, 1 row, 1 path, 1 fact. 2, Max Planck's students who won: two hops, 3 rows, 3 paths, 6 facts. 3, Esther Duflo's ancestors one to three up: pattern length 3, 10 rows, 11 paths, 11 facts. 4, laureates educated at the University of Göttingen: two hops, 24 rows, 24 paths, 48 facts. Below, Marie Curie's students who won: 0 rows, an empty result, not a proven none.">
+        <defs>
+          <filter id="k3dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="71" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <marker id="k3dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k3dH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k3dP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k3dL { font: 600 11px Inter, sans-serif; fill: #11211E; }
+          .k3dS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k3dV { font: 800 18px Inter, sans-serif; fill: #002B25; }
+          .k3dN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k3dH" x="30" y="28">VELLUM'S FOUR QUERIES, AS THE QUERY BOX ANSWERS THEM</text>
+
+        <g filter="url(#k3dSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="44" width="190" height="220" rx="10" transform="rotate(-0.6 125 154)" fill="#FFFFFF"/>
+          <rect x="240" y="44" width="190" height="220" rx="10" transform="rotate(0.5 335 154)" fill="#FFFFFF"/>
+          <rect x="450" y="44" width="190" height="220" rx="10" transform="rotate(-0.5 545 154)" fill="#E9F5F2" stroke="#004238"/>
+          <rect x="660" y="44" width="190" height="220" rx="10" transform="rotate(0.6 755 154)" fill="#FFFFFF"/>
+          <rect x="458" y="205" width="150" height="22" rx="4" transform="rotate(-1 533 216)" fill="#F4B860" stroke="none"/>
+          <circle cx="70" cy="124" r="11" fill="#E9F5F2"/>
+          <circle cx="180" cy="124" r="11" fill="#FFFFFF"/>
+          <path d="M83 124 L165 124" marker-end="url(#k3dAr)"/>
+          <circle cx="270" cy="124" r="11" fill="#E9F5F2"/>
+          <circle cx="335" cy="124" r="11" fill="#FFFFFF"/>
+          <circle cx="400" cy="124" r="11" fill="#FFFFFF"/>
+          <path d="M283 124 L320 124" marker-end="url(#k3dAr)"/>
+          <path d="M348 124 L385 124" marker-end="url(#k3dAr)"/>
+          <circle cx="480" cy="124" r="11" fill="#FFFFFF"/>
+          <circle cx="528" cy="124" r="11" fill="#FFFFFF" stroke-dasharray="4 3"/>
+          <circle cx="574" cy="124" r="11" fill="#FFFFFF" stroke-dasharray="4 3"/>
+          <circle cx="620" cy="124" r="11" fill="#FFFFFF" stroke-dasharray="4 3"/>
+          <path d="M515 124 L495 124" marker-end="url(#k3dAr)"/>
+          <path d="M561 124 L542 124" marker-end="url(#k3dAr)"/>
+          <path d="M607 124 L588 124" marker-end="url(#k3dAr)"/>
+          <circle cx="690" cy="124" r="11" fill="#E9F5F2"/>
+          <circle cx="755" cy="124" r="11" fill="#FFFFFF"/>
+          <circle cx="820" cy="124" r="11" fill="#FFFFFF"/>
+          <path d="M742 124 L705 124" marker-end="url(#k3dAr)"/>
+          <path d="M768 124 L805 124" marker-end="url(#k3dAr)"/>
+          <rect x="30" y="284" width="820" height="40" rx="8" transform="rotate(0.3 440 304)" fill="#FFFFFF" stroke-dasharray="6 5"/>
+        </g>
+
+        <text class="k3dP" x="44" y="70">1 · Hodgkin's prize</text>
+        <text class="k3dS" x="44" y="88">WON, from one person</text>
+        <text class="k3dS" x="56" y="154">p</text>
+        <text class="k3dS" x="168" y="154">z</text>
+        <text class="k3dV" x="44" y="194">1 row</text>
+        <text class="k3dS" x="44" y="220">1 path · 1 fact</text>
+        <text class="k3dL" x="44" y="246">1 hop</text>
+
+        <text class="k3dP" x="254" y="70">2 · Planck's winners</text>
+        <text class="k3dS" x="254" y="88">ADVISED, then WON</text>
+        <text class="k3dS" x="258" y="154">p</text>
+        <text class="k3dS" x="331" y="154">s</text>
+        <text class="k3dS" x="396" y="154">z</text>
+        <text class="k3dV" x="254" y="194">3 rows</text>
+        <text class="k3dS" x="254" y="220">3 paths · 6 facts</text>
+        <text class="k3dL" x="254" y="246">2 hops</text>
+
+        <text class="k3dP" x="464" y="70">3 · Duflo's ancestors</text>
+        <text class="k3dS" x="464" y="88">ADVISED*1..3, backwards</text>
+        <text class="k3dS" x="476" y="154">p</text>
+        <text class="k3dS" x="530" y="154">a, 1 to 3 up</text>
+        <text class="k3dV" x="464" y="194">10 rows</text>
+        <text class="k3dL" x="466" y="220">11 paths · 11 facts</text>
+        <text class="k3dL" x="464" y="246">pattern length 3</text>
+
+        <text class="k3dP" x="674" y="70">4 · Göttingen winners</text>
+        <text class="k3dS" x="674" y="88">EDUCATED_AT, then WON</text>
+        <text class="k3dS" x="686" y="154">o</text>
+        <text class="k3dS" x="751" y="154">p</text>
+        <text class="k3dS" x="816" y="154">z</text>
+        <text class="k3dV" x="674" y="194">24 rows</text>
+        <text class="k3dS" x="674" y="220">24 paths · 48 facts</text>
+        <text class="k3dL" x="674" y="246">2 hops</text>
+
+        <text class="k3dL" x="46" y="309">Also try · Marie Curie's students who won: 0 rows. An empty result, not a proven "none".</text>
+
+        <text class="k3dN" x="30" y="352">Counts as the query box prints them on the real extract. Constructed Vellum example, real Wikidata rows.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - only the variable-length query returns fewer rows than paths</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step">
+        <p><strong>Query 1: Dorothy Hodgkin's prize.</strong> One anchor, one hop. Predict the row count before you press the button. Then click "1 · Hodgkin's prize" in the query box and read the line above the result.</p>
+        <div class="prompt-box good"><span class="label">★ Step 1 · one hop</span>MATCH (p:Person {name:"Dorothy Hodgkin"})-[:WON]-&gt;(z:Prize) RETURN z
+
+Prediction: ____ rows
+Query box: 1 row · 1 matching path · 1 fact used · pattern length 1 hop
+Row: Nobel Prize in Chemistry</div>
+      </div>
+      <div class="step">
+        <p><strong>Query 2: Max Planck's students who won.</strong> Two hops, anchored on the advisor. The Part 1 figure already showed you the answer; check that the box agrees, then delete <code>-[:WON]-&gt;(z:Prize)</code> and run again to see the fourth student come back.</p>
+        <div class="prompt-box good"><span class="label">★ Step 2 · two hops</span>MATCH (p:Person {name:"Max Planck"})-[:ADVISED]-&gt;(s)-[:WON]-&gt;(z:Prize) RETURN s
+
+Prediction: ____ rows
+Query box: 3 rows · 3 matching paths · 6 facts used · pattern length 2 hops
+Rows: Max von Laue, Gustav Ludwig Hertz, Walther Bothe
+6 facts = 3 ADVISED edges + 3 WON edges, one pair per path</div>
+      </div>
+      <div class="step">
+        <p><strong>Query 3: Esther Duflo's ancestors, one to three generations up.</strong> The arrow points into the anchor and the relationship carries a range. Predict rows and paths separately: they will differ.</p>
+        <div class="prompt-box good"><span class="label">★ Step 3 · variable length</span>MATCH (p:Person {name:"Esther Duflo"})&lt;-[:ADVISED*1..3]-(a) RETURN a
+
+Prediction: ____ rows, ____ paths
+Query box: 10 rows · 11 matching paths · 11 facts used · pattern length 3 hops
+Rows include Abhijit Banerjee, Joshua Angrist, Eric Maskin, David Card,
+Kenneth Arrow, Orley Ashenfelter ...
+11 paths, 10 rows: Ashenfelter is reached at depth 2 and at depth 3.
+Now try a bare *: 14 rows, 17 paths (this box stops a bare * at 4).</div>
+      </div>
+      <div class="step">
+        <p><strong>Query 4: laureates educated at the University of Göttingen.</strong> The anchor is an institution, and the person is in the middle of the chain. The name must match the Wikidata label exactly, umlaut included.</p>
+        <div class="prompt-box good"><span class="label">★ Step 4 · anchor in the middle</span>MATCH (o:Institution {name:"University of Göttingen"})&lt;-[:EDUCATED_AT]-(p)-[:WON]-&gt;(z:Prize) RETURN p
+
+Prediction: ____ rows
+Query box: 24 rows · 24 matching paths · 48 facts used · pattern length 2 hops
+Every row is one path: no one here won twice through this institution.
+Spell it "University of Gottingen" and you get 0 rows, not an error.</div>
+      </div>
+      <div class="step">
+        <p><strong>Self-study: write each again in SPARQL</strong> and run it at query.wikidata.org on your own time. No outputs are printed here on purpose: the endpoint reads live Wikidata, which keeps changing and includes statements this extract filtered, so your counts may not match the box. The <code>VALUES</code> line keeps only the six prize items the extract uses; the extract's own build query ran on that endpoint with the same <code>wd:</code>, <code>wdt:</code> and <code>p:</code> prefixes and no PREFIX lines.</p>
+        <div class="prompt-box good"><span class="label">★ Step 5 · the four in SPARQL (Self-study)</span># 1 · Hodgkin's prize
+SELECT ?prize WHERE {
+  VALUES ?prize { wd:Q38104 wd:Q44585 wd:Q80061 wd:Q37922 wd:Q35637 wd:Q47170 }
+  ?h rdfs:label "Dorothy Hodgkin"@en . ?h wdt:P166 ?prize . }
+
+# 2 · Planck's students who won (P184 points student to advisor)
+SELECT DISTINCT ?s WHERE {
+  VALUES ?prize { wd:Q38104 wd:Q44585 wd:Q80061 wd:Q37922 wd:Q35637 wd:Q47170 }
+  ?planck rdfs:label "Max Planck"@en .
+  ?s wdt:P184 ?planck . ?s wdt:P166 ?prize . }
+
+# 3 · Duflo's ancestors, 1 to 3 up (no range operator: spell it out)
+SELECT DISTINCT ?a WHERE {
+  ?duflo rdfs:label "Esther Duflo"@en .
+  ?duflo (wdt:P184|wdt:P184/wdt:P184|wdt:P184/wdt:P184/wdt:P184) ?a . }
+
+# 4 · Göttingen laureates
+SELECT DISTINCT ?p WHERE {
+  VALUES ?prize { wd:Q38104 wd:Q44585 wd:Q80061 wd:Q37922 wd:Q35637 wd:Q47170 }
+  ?o rdfs:label "University of Göttingen"@en .
+  ?p wdt:P69 ?o . ?p wdt:P166 ?prize . }</div>
+      </div>
+      <div class="step">
+        <p><strong>Write section 3 of the design note.</strong> Four queries, their hop counts, and the counts you read off the box. Add one line on the empty result below: editors will ask about it.</p>
+        <div class="prompt-box good"><span class="label">★ Step 6 · Vellum graph design note, section 3</span>Four queries (real Wikidata extract, teaching Cypher subset):
+1. Hodgkin's prize ............. 1 hop .......... 1 row
+2. Planck's students who won ... 2 hops ......... 3 rows, 3 paths
+3. Duflo's ancestors, 1 to 3 ... up to 3 hops ... 10 rows, 11 paths
+4. Göttingen laureates ......... 2 hops ......... 24 rows
+Rows are distinct answers; paths are routes. Report both.
+Empty is not false: Marie Curie's students who won returns 0 rows.
+Patterns live in Cypher; facts are re-checked against Wikidata in SPARQL.</div>
+      </div>
+    </div>
+
+    <div class="kgr-query">
+      <template data-q="1 · Hodgkin's prize">MATCH (p:Person {name:"Dorothy Hodgkin"})-[:WON]-&gt;(z:Prize) RETURN z</template>
+      <template data-q="2 · Planck's students who won">MATCH (p:Person {name:"Max Planck"})-[:ADVISED]-&gt;(s)-[:WON]-&gt;(z:Prize) RETURN s</template>
+      <template data-q="3 · Duflo's ancestors, 1 to 3 up">MATCH (p:Person {name:"Esther Duflo"})&lt;-[:ADVISED*1..3]-(a) RETURN a</template>
+      <template data-q="4 · Göttingen laureates">MATCH (o:Institution {name:"University of Göttingen"})&lt;-[:EDUCATED_AT]-(p)-[:WON]-&gt;(z:Prize) RETURN p</template>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>Empty is not false.</strong> Type <code>MATCH (p:Person {name:"Marie Curie"})-[:ADVISED]-&gt;(s)-[:WON]-&gt;(z:Prize) RETURN s</code> into the box. It returns 0 rows. That does not prove none of her students won; it says this extract holds no matching chain. Now drop the last hop, <code>MATCH (p:Person {name:"Marie Curie"})-[:ADVISED]-&gt;(s) RETURN s</code>: still 0 rows, so the extract has no doctoral-student edge from her at all. The gap is in the data, not in the world. Her own prizes are there: <code>-[:WON]-&gt;</code> from her returns 2 rows, Physics and Chemistry.</p>
+    </div>
+  </section>
+
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before session 4</h2>
+      <span class="tag exercise">30 min</span>
+    </div>
+    <ol>
+      <li><strong>Translate one of your ten questions from session 1</strong> into a Cypher pattern. Mark which nodes are anchors (named) and which are holes (variables), and write the hop count next to it.</li>
+      <li><strong>Find a rows-vs-paths gap of your own.</strong> In the query box, change Duflo to another laureate with a range like <code>*1..3</code>, and look for a case where paths exceed rows. Name the person reached twice.</li>
+      <li><strong>Run step 5's Duflo query at query.wikidata.org</strong>, then change the path to <code>wdt:P184+</code>. Compare the two lists with the box's <code>*1..3</code> and bare <code>*</code> results, and write one sentence on why live Wikidata can differ from the extract.</li>
+      <li><strong>Rewrite one variable-length pattern in the quantified form</strong>, for example <code>(p)&lt;-[:ADVISED]-{1,3}(a)</code> style, using the Cypher Manual's equivalence. You cannot run it here; check it in Neo4j Desktop or AuraDB Free if you have one.</li>
+    </ol>
+  </section>
+
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 3 gets stamped in your passport.</p>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · In <code>MATCH (p {name:"Esther Duflo"})&lt;-[:ADVISED*1..3]-(a) RETURN a</code>, what does <code>*1..3</code> ask for?</p>
+      <button class="qopt" type="button">A · Exactly three ADVISED edges, and nothing shorter</button>
+      <button class="qopt" type="button">B · Zero to three edges, so Duflo herself is one of the rows</button>
+      <button class="qopt" type="button">C · Chains of one, two or three ADVISED edges ending at Duflo, so her advisors up to three generations back</button>
+      <button class="qopt" type="button">D · The first three rows of any length of chain</button>
+      <p class="qwhy">The range bounds the number of hops, inclusive at both ends. Exactly three is <code>*3</code>; including the anchor is <code>*0..3</code>. Row limits are a separate clause, not part of the pattern.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · On Wikidata, <code>wdt:P184</code> points from a student to their doctoral advisor. Which triple pattern binds <code>?s</code> to Max Planck's students, with <code>?planck</code> on the left?</p>
+      <button class="qopt" type="button">A · <code>?planck ^wdt:P184 ?s</code></button>
+      <button class="qopt" type="button">B · <code>?planck wdt:P184+ ?s</code></button>
+      <button class="qopt" type="button">C · <code>?planck wdt:P184? ?s</code></button>
+      <button class="qopt" type="button">D · <code>?planck wdt:P184/wdt:P184 ?s</code></button>
+      <p class="qwhy">The caret walks a property backwards, so it reads "?s has ?planck as doctoral advisor". B climbs to Planck's own advisors, any depth up; C is zero or one step up; D is Planck's advisor's advisor.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="3">
+      <p class="qtext">3 · The Duflo query reports 11 matching paths but 10 rows. Why?</p>
+      <button class="qopt" type="button">A · One path failed and was dropped</button>
+      <button class="qopt" type="button">B · The box counts the anchor as a path but not as a row</button>
+      <button class="qopt" type="button">C · The Hahn and Zincke loop adds an extra path</button>
+      <button class="qopt" type="button">D · Orley Ashenfelter is reached by two routes, at depth 2 and depth 3, and RETURN a lists him once</button>
+      <p class="qwhy">Paths are routes; rows are distinct values of the returned variable. Ashenfelter advised Angrist and also advised Card, who advised Angrist. The Hahn and Zincke loop is in a different part of the graph and never touches Duflo's ancestors.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Neo4j Cypher Manual (Cypher 25): MATCH, variable-length paths, shortest paths</span><span class="note">ASCII-art patterns, <code>*m..n</code> semantics, "not GQL conformant", SHORTEST k; read at source</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Neo4j Cypher Manual (Cypher 5): variable-length paths</span><span class="note">Quantified path patterns and quantified relationships introduced in Neo4j 5.9</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">openCypher</span><span class="note">The specification "evolves towards ISO/IEC 39075 GQL"</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">ISO/IEC 39075:2024, GQL</span><span class="note">Published 2024-04-12; read at the IEC webstore</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">The New Stack on GQL</span><span class="note">"95% there" vendor quote and INSERT vs CREATE; reported from search snippets</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">W3C SPARQL 1.1 Query Language (Recommendation, 21 March 2013)</span><span class="note">Basic graph patterns and the six property-path forms</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Wikibase RDF Dump Format</span><span class="note">Truthy <code>wdt:</code> links entity to value directly</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Wikidata Query Service user manual</span><span class="note">60-second deadline, per-client budget, HTTP 429 with Retry-After</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Wikimedia Foundation User-Agent Policy</span><span class="note">Descriptive User-Agent with contact; generic agents get HTTP 403</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Neo4j AuraDB quotas and limits; Neo4j Desktop download</span><span class="note">Free tier 200,000 nodes, 400,000 relationships, 1GB; older 50k / 175k figures are stale (reported)</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Vellum Press and its four queries</span><span class="note">Constructed; every row, path and fact count is computed by the query box on the real graph</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 3 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Pattern = picture</b><span><code>(var:Label {key:"v"})-[:TYPE]-&gt;(var)</code>. Values pin, variables are holes.</span></div>
+      <div class="cheat-item"><b><code>*m..n</code> is a hop range</b><span>Bare <code>*</code> starts at 1; <code>*0..n</code> includes the anchor. Quantified form: <code>{m,n}</code>, since 5.9.</span></div>
+      <div class="cheat-item"><b>Rows are not paths</b><span>Duflo, 1 to 3 up: 11 paths, 10 rows. One ancestor, two routes.</span></div>
+      <div class="cheat-item"><b>BGP = unrolled chain</b><span>Cut the Cypher chain at every node; each piece is a triple; shared variables join them.</span></div>
+      <div class="cheat-item"><b>Property paths</b><span><code>p+ p* p? p/q ^p p|q</code>. No numeric range: spell depth with <code>/</code> and <code>|</code>.</span></div>
+      <div class="cheat-item"><b>Check the arrow</b><span>P184 points student to advisor; ADVISED points advisor to student. Translate, then flip.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p>You can now write a multi-hop pattern and read its rows and paths. Session 4 is the lab: 24 desk questions at one to four hops, answered twice, once by walking the graph and once by retrieving text chunks, with the hop limit, chunk size and a missing edge type as levers you pull yourself.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 3 of 6 · learn-knowledge-graphs-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="02-nodes-edges-and-two-models.html">← Prev: Nodes, edges and two models</a> &nbsp;·&nbsp; <a href="04-the-multi-hop-lab.html">Next: The multi-hop lab →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/kgr-sample.js?v=1"></script>
+<script src="../assets/kgr-live.js?v=4"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

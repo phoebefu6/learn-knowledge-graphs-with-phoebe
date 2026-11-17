@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 2 of 6. The labelled property graph, the same facts as RDF triples, and how Wikidata does both with statements, qualifiers, references and ranks. Build Vellum's graph model on real Wikidata rows: 4 node labels, 5 relationship types.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Nodes, edges and two models - learn knowledge graphs with phoebe">
+<meta property="og:description" content="Session 2 of 6. Max Born won the Physics prize in 1954. Where does the year go? On the edge, on a statement node, or nowhere at all.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/courses/02-nodes-edges-and-two-models.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Nodes, edges and two models - learn knowledge graphs with phoebe">
+<meta name="twitter:description" content="Session 2 of 6. Property graphs, RDF triples, Wikidata statements, and the year that has to live somewhere.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 2 · Nodes, edges and two models - learn knowledge graphs with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-knowledge-graphs-with-phoebe</a> / Session 2 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Knowledge Graphs with Phoebe · Session 2 of 6</div>
+    <h1>Nodes, edges and <span class="accent">two models</span></h1>
+    <p class="sub">"Max Born won the Nobel Prize in Physics in 1954." Three things and a date. Write that fact into a graph and you have to decide what is a node, what is an edge, and where the year lives. Tonight we write it three ways: as a labelled property graph, as RDF triples, and the way Wikidata actually stores it, with a statement, a qualifier and a Q-number that settles who is who. Then we fix Vellum's model.</p>
+    <div class="chip-row">
+      <span class="chip level">🟢 Foundations</span>
+      <span class="chip audience">Data and ML engineers</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · Property graph, RDF, Wikidata</span>
+      <span class="a3" style="flex:5">18-40 · Build-along: Vellum's graph model</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we start</h2>
+    </div>
+    <p class="lede">Session 1 sorted questions by hops. A hop needs something to walk on, so tonight is about the shape of the thing being walked: which entities become nodes, which connections become edges, and where the small facts about a connection (a year, a source, a "this is wrong") get written down. There are two big families of answer, property graphs and RDF, and one very large public graph, Wikidata, that borrows from both.</p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">★ Build-along = do it yourself</span>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Constructed Vellum example</span>
+      <p><strong>Vellum Press</strong>, the constructed publisher, now has ten sorted desk questions and wants the graph that answers them. Its data is real: the Wikidata extract fetched 2026-11-16, with 1,000 Nobel laureates, their doctoral advisors two generations up, where they studied and worked, and their citizenship. Tonight's job is to name every node label and relationship type in that extract, decide which way each edge points, and decide where the award year goes.</p>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> Section 2 of Vellum's graph design note: the model (4 node labels, 5 relationship types, the real count of each), the direction of every edge, where the year sits, and one known data artefact to watch. Plus the same fact written as a property-graph edge and as a Wikidata statement, side by side.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the labelled property graph</span>
+      <h2>The property graph: labels, properties, typed edges</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">A labelled property graph has nodes and directed, typed relationships. Every node carries a label (Person, Prize) and a bag of key-value properties. So does every relationship. That last part is the whole trick: the year Max Born won sits on the WON edge itself, because it is a fact about the winning, not about Born or about the prize.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One real subgraph from Wikidata drawn as a property graph. A node labelled Person with properties name Max Born, qid Q58978, born 1882-12-11. A WON relationship carrying the property year 1954 points to a node labelled Prize, name Nobel Prize in Physics, qid Q38104. An ADVISED relationship with no properties points from Max Born to a Person node, Max Delbrück, qid Q76807.">
+        <defs>
+          <filter id="k2aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="52" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <marker id="k2aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k2aH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k2aL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k2aS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k2aP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k2aN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k2aH" x="40" y="28">ONE REAL SUBGRAPH, AS A LABELLED PROPERTY GRAPH</text>
+
+        <g filter="url(#k2aSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="40" y="90" width="230" height="120" rx="16" transform="rotate(-0.8 155 150)" fill="#E9F5F2"/>
+          <rect x="600" y="44" width="240" height="90" rx="16" transform="rotate(0.7 720 89)" fill="#FFFFFF"/>
+          <rect x="600" y="204" width="240" height="90" rx="16" transform="rotate(-0.6 720 249)" fill="#FFFFFF"/>
+          <rect x="380" y="80" width="110" height="26" rx="13" transform="rotate(-1.5 435 93)" fill="#F4B860"/>
+          <path d="M274 122 L376 97"/>
+          <path d="M494 93 L596 89" marker-end="url(#k2aAr)"/>
+          <path d="M274 182 C380 222 480 248 596 248" marker-end="url(#k2aAr)"/>
+        </g>
+
+        <text class="k2aP" x="58" y="116">:Person</text>
+        <text class="k2aL" x="58" y="142">name: Max Born</text>
+        <text class="k2aL" x="58" y="162">qid: Q58978</text>
+        <text class="k2aL" x="58" y="182">born: 1882-12-11</text>
+
+        <text class="k2aP" x="618" y="70">:Prize</text>
+        <text class="k2aL" x="618" y="94">name: Nobel Prize in Physics</text>
+        <text class="k2aL" x="618" y="114">qid: Q38104</text>
+
+        <text class="k2aP" x="618" y="230">:Person</text>
+        <text class="k2aL" x="618" y="254">name: Max Delbrück</text>
+        <text class="k2aL" x="618" y="274">qid: Q76807</text>
+
+        <text class="k2aP" x="410" y="70">:WON</text>
+        <text class="k2aL" x="392" y="98">{year: 1954}</text>
+        <text class="k2aS" x="380" y="128">the edge carries its own property</text>
+
+        <text class="k2aP" x="372" y="268">:ADVISED</text>
+        <text class="k2aS" x="372" y="286">advisor to student, no properties</text>
+
+        <text class="k2aN" x="40" y="318">Real Wikidata rows. Labels start with a colon, relationship types are in capitals, properties read key: value.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the year is a fact about the winning, so it lives on the WON edge</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Nodes, labels and properties<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A <strong>node</strong> is one entity. Its <strong>label</strong> says what kind of thing it is: <code>Person</code>, <code>Institution</code>, <code>Country</code>, <code>Prize</code>. Its <strong>properties</strong> are the plain values you would otherwise put in columns: a name, a Wikidata id, a birth date. A <strong>relationship</strong> joins exactly two nodes, has one type (<code>WON</code>, <code>ADVISED</code>) and a direction.</p>
+        <p>Hogan and colleagues' survey, read at source, defines this model precisely: a property graph "allows a set of property-value pairs and a label to be associated with both nodes and edges". Two simpler shapes sit underneath it in the same section. A <strong>directed edge-labelled graph</strong> is just nodes and labelled arrows, nothing hanging off either. A <strong>heterogeneous graph</strong> gives each node and edge one type, as part of the model rather than as an extra relation. The property graph adds the key-value pairs.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Properties on edges: why the year sits on WON<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Try the alternatives. Put <code>year: 1954</code> on Max Born and it breaks the moment someone wins twice: Marie Curie won Physics in 1903 and Chemistry in 1911, and in the extract she has two WON edges. Put the year on the Physics prize node and it is nonsense, because the prize was awarded every year. The year describes one person winning one prize, which is exactly what one edge is.</p>
+        <p>The test generalises. When a value only makes sense for a pair of entities (a year, a role, a start and end date, a share), it belongs on the edge. When it makes sense for one entity alone (a name, a birth date), it belongs on the node.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Schema-first vs schema-later<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Most property graph stores let you write any label and any property without declaring them first: schema-later. You load the data, then add constraints (this label must have a unique <code>qid</code>) as you learn what you need. Relational databases are schema-first: the table exists before the row.</p>
+        <p>Schema-later is why adding a new relationship type is not a migration, the point session 1 made. It is also why a typo becomes a new type silently: <code>ADVISOR</code> next to <code>ADVISED</code> and half your edges vanish from every query. The build-along tonight writes the schema down anyway, as a short list in the design note, because a model nobody wrote down is a model nobody can check.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>The property graph got an ISO standard.</strong> ISO/IEC 39075:2024, "Database languages - GQL", was published 2024-04-12 as an International Standard. It defines data structures and operations on property graphs and a language to create, query and maintain them, for portability across implementations. (Read at the IEC webstore; iso.org refused our automated fetch, so ISO's own catalogue page is cited as reported.) A sibling standard, ISO/IEC 9075-16:2023, SQL/PGQ, is reported as defining how SQL itself represents and queries property graphs. Session 3 shows where Cypher already matches GQL and where it does not.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers RDF triples, IRIs, literals, blank nodes</span>
+      <h2>RDF: everything is a triple</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">RDF writes every fact as one triple: subject, predicate, object. Born, award received, Physics prize. Every thing is named by a global IRI, so two datasets that use the same IRI are talking about the same thing. The catch is in the shape: a triple has three slots and no fourth. There is nowhere to put the year.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The fact Max Born won the Nobel Prize in Physics as one RDF triple: subject wd:Q58978, predicate wdt:P166 award received, object wd:Q38104. Below, a failure panel: the triple has no slot for the year 1954, the predicate is an IRI not a node, and a literal can only be an object. A fix panel: a statement node, written as three triples with p:P166, ps:P166 and pq:P585 1954; and RDF 1.2 triple terms, where a whole triple becomes the object of another triple, still a Candidate Recommendation Draft dated 16 November 2026.">
+        <defs>
+          <filter id="k2bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="64" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <marker id="k2bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k2bH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k2bL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k2bS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k2bP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k2bR { font: 800 12px Inter, sans-serif; fill: #991B1B; }
+          .k2bC { font: 500 11px ui-monospace, Menlo, monospace; fill: #11211E; }
+          .k2bN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k2bH" x="40" y="28">THE SAME FACT AS ONE TRIPLE, AND THE YEAR WITH NOWHERE TO GO</text>
+
+        <g filter="url(#k2bSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="40" y="48" width="200" height="52" rx="26" transform="rotate(-1 140 74)" fill="#E9F5F2"/>
+          <rect x="560" y="48" width="240" height="52" rx="26" transform="rotate(1 680 74)" fill="#E9F5F2"/>
+          <path d="M244 74 L556 74" marker-end="url(#k2bAr)"/>
+          <rect x="40" y="130" width="380" height="164" rx="10" transform="rotate(-0.4 230 212)" fill="#FEF2F2" stroke="#991B1B"/>
+          <rect x="450" y="130" width="390" height="164" rx="10" transform="rotate(0.4 645 212)" fill="#FFFFFF" stroke="#004238"/>
+          <rect x="462" y="203" width="180" height="18" rx="4" transform="rotate(-0.6 552 212)" fill="#F4B860"/>
+        </g>
+
+        <text class="k2bL" x="62" y="72">wd:Q58978</text>
+        <text class="k2bS" x="62" y="89">subject: Max Born</text>
+        <text class="k2bP" x="300" y="64">wdt:P166 (award received)</text>
+        <text class="k2bS" x="320" y="94">predicate: an IRI</text>
+        <text class="k2bL" x="582" y="72">wd:Q38104</text>
+        <text class="k2bS" x="582" y="89">object: Nobel Prize in Physics</text>
+
+        <text class="k2bR" x="58" y="154">Where does 1954 go?</text>
+        <text class="k2bC" x="58" y="180">wd:Q58978 wdt:P166 wd:Q38104 .</text>
+        <text class="k2bS" x="58" y="206">Three slots, all used. The predicate is an IRI,</text>
+        <text class="k2bS" x="58" y="224">not a node, so nothing can hang off it.</text>
+        <text class="k2bS" x="58" y="250">"1954" is a literal: it may only be an object,</text>
+        <text class="k2bS" x="58" y="268">never the subject of another triple.</text>
+
+        <text class="k2bP" x="468" y="154">Fix 1: a statement node (Wikidata's way)</text>
+        <text class="k2bC" x="468" y="180">wd:Q58978 p:P166 _:st .</text>
+        <text class="k2bC" x="468" y="198">_:st ps:P166 wd:Q38104 .</text>
+        <text class="k2bC" x="468" y="216">_:st pq:P585 "1954" .</text>
+        <text class="k2bP" x="468" y="248">Fix 2: an RDF 1.2 triple term</text>
+        <text class="k2bS" x="468" y="266">the whole triple becomes the object of another</text>
+        <text class="k2bS" x="468" y="284">triple; still a Candidate Recommendation Draft</text>
+
+        <text class="k2bN" x="40" y="322">Real Wikidata ids. _:st is a blank node standing in for the statement; the year is simplified to 1954.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - a triple has three slots; to say "in 1954" you turn the fact itself into a node</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Subject, predicate, object, and the IRI<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The RDF 1.1 Primer (W3C Working Group Note, 24 June 2014) puts it in one line: "An RDF statement expresses a relationship between two resources." The subject and object are the resources, the predicate is the relationship. Max Born, award received, Nobel Prize in Physics.</p>
+        <p>Each of those is an <strong>IRI</strong>, a global identifier: "An IRI identifies a resource". Wikidata's IRI for Born is <code>http://www.wikidata.org/entity/Q58978</code>, shortened to <code>wd:Q58978</code> with a prefix. Because the identifier is global, anyone else's dataset that says <code>wd:Q58978</code> is talking about the same physicist, not a namesake. That is the property graph's <code>qid</code> property promoted to the identity of the node itself.</p>
+        <p>Note what the predicate is: also an IRI, not a thing with slots. In a property graph the WON edge is an object you can hang <code>{year: 1954}</code> on. In plain RDF, <code>wdt:P166</code> is a name in the middle position, and the triple is complete.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Literals only as objects; blank nodes<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>Literals</strong> are the plain values: strings, numbers, dates. The Primer: "Literals are basic values that are not IRIs", and they "may only appear in the object position of a triple." So "1954" can be the end of a triple, never the start of one. You cannot say anything further about a literal.</p>
+        <p><strong>Blank nodes</strong> are resources without a global identifier, "like simple variables in algebra"; they can be a subject or an object. They are how RDF says "there is a something here" without naming it, which is exactly what the year problem needs: a something that stands for "this particular award", with the person, the prize and the year all attached to it. The figure's <code>_:st</code> is one, standing in for Wikidata's statement node.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Property graph vs RDF: when each fits<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <table class="clean">
+          <tr><th>You need</th><th>Property graph</th><th>RDF</th></tr>
+          <tr><td>Facts about a relationship (year, role, weight)</td><td>Native: properties on the edge</td><td>A statement node, or RDF 1.2 triple terms</td></tr>
+          <tr><td>Identity that survives across datasets</td><td>A property you choose (here <code>qid</code>)</td><td>Native: every resource is an IRI</td></tr>
+          <tr><td>Merging data from many publishers</td><td>An import job per source</td><td>Same IRIs, the graphs simply union</td></tr>
+          <tr><td>Query language</td><td>Cypher today, GQL as the ISO standard</td><td>SPARQL, a W3C Recommendation</td></tr>
+          <tr><td>Typical home</td><td>An application's own graph store</td><td>Public, linked, shared data such as Wikidata</td></tr>
+        </table>
+        <p>Neither wins outright. Vellum's graph is one team's working copy of a public dataset, so it will be a property graph that keeps the public identifier (the QID) as a property. Session 3 runs the same questions in both query languages.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>RDF 1.2 is being finished as we write.</strong> The W3C's RDF 1.2 Concepts document is a Candidate Recommendation Draft dated 16 November 2026, not yet a Recommendation. Its headline addition is the triple term: a triple can be used "as a triple term, in the object position of another triple", which gives plain RDF a direct way to say something about a fact, such as the year it happened. Until it is a Recommendation, the RDF 1.1 Primer of 2014 is the stable reference, and statement nodes are what large graphs like Wikidata actually use.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers Wikidata statements, qualifiers, references, ranks</span>
+      <h2>How Wikidata does both</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">Wikidata is RDF underneath, but its unit is not the triple. It is the <strong>statement</strong>: one property-value pair on an item, which can carry qualifiers (the year), references (the source) and a rank (how much to trust it). Every statement is published twice, once as a short truthy triple and once as a full statement node. Knowing which one you queried is the difference between "Born won Physics" and "Born won Physics in 1954".</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 350" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Anatomy of one Wikidata statement. The item wd:Q58978, Max Born, links by p:P166 to a statement node. The statement node has a rank, preferred, normal or deprecated. From the statement, ps:P166 leads to the value wd:Q38104, the Nobel Prize in Physics; pq:P585 leads to the qualifier 1954, point in time; prov:wasDerivedFrom leads to a reference node with pr: values. A dashed shortcut, wdt:P166, links the item straight to the value: the truthy triple, best rank only, qualifiers dropped.">
+        <defs>
+          <filter id="k2cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="77" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <marker id="k2cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k2cH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k2cL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k2cS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k2cP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k2cN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k2cH" x="40" y="28">ONE WIKIDATA STATEMENT, TAKEN APART</text>
+
+        <g filter="url(#k2cSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="40" y="150" width="180" height="60" rx="30" transform="rotate(-1 130 180)" fill="#E9F5F2"/>
+          <rect x="330" y="140" width="180" height="80" rx="10" transform="rotate(1 420 180)" fill="#F4B860"/>
+          <rect x="640" y="60" width="200" height="54" rx="10" transform="rotate(-1.2 740 87)" fill="#FFFFFF"/>
+          <rect x="640" y="158" width="200" height="54" rx="10" transform="rotate(1 740 185)" fill="#FFFFFF"/>
+          <rect x="640" y="250" width="200" height="54" rx="10" transform="rotate(-0.8 740 277)" fill="#FFFFFF"/>
+          <path d="M224 180 L326 180" marker-end="url(#k2cAr)"/>
+          <path d="M514 158 L636 92" marker-end="url(#k2cAr)"/>
+          <path d="M514 184 L636 185" marker-end="url(#k2cAr)"/>
+          <path d="M440 224 C460 262 560 276 636 276" marker-end="url(#k2cAr)"/>
+          <path d="M130 146 C160 60 400 50 636 76" stroke="#004238" stroke-dasharray="6 5" marker-end="url(#k2cAr)"/>
+        </g>
+
+        <text class="k2cL" x="62" y="176">wd:Q58978</text>
+        <text class="k2cS" x="62" y="194">item: Max Born</text>
+
+        <text class="k2cL" x="348" y="166">statement</text>
+        <text class="k2cL" x="348" y="186">rank: preferred,</text>
+        <text class="k2cL" x="348" y="206">normal or deprecated</text>
+
+        <text class="k2cL" x="658" y="84">wd:Q38104</text>
+        <text class="k2cS" x="658" y="102">value: Physics prize</text>
+        <text class="k2cL" x="658" y="182">"1954"</text>
+        <text class="k2cS" x="658" y="200">qualifier: point in time</text>
+        <text class="k2cL" x="658" y="274">reference node</text>
+        <text class="k2cS" x="658" y="292">pr: values, if recorded</text>
+
+        <text class="k2cP" x="240" y="170">p:P166</text>
+        <text class="k2cP" x="580" y="150">ps:P166</text>
+        <text class="k2cP" x="545" y="176">pq:P585</text>
+        <text class="k2cP" x="440" y="304">prov:wasDerivedFrom</text>
+        <text class="k2cP" x="250" y="50">wdt:P166, the truthy shortcut</text>
+        <text class="k2cS" x="250" y="112">best rank only, qualifiers dropped</text>
+
+        <text class="k2cN" x="40" y="334">Real ids from the extract. The full path keeps the year; the dashed truthy edge does not.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the statement is a node; the year, the source and the rank all hang off it</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Items, properties, statements, qualifiers<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>An <strong>item</strong> is an entity with a Q-prefixed id: Max Born is Q58978. A <strong>property</strong> is a P-prefixed id: P166 award received, P184 doctoral advisor, P585 point in time. Wikidata's help pages: "A statement consists of a property-value pair." Born's award statement is P166 = Q38104.</p>
+        <p>A <strong>qualifier</strong> "further describes or refines the value of a property given in a statement". The award year is a qualifier: P585 = 1954, on the P166 statement. It plays exactly the role of <code>{year: 1954}</code> on the WON edge. <strong>References</strong> "point to specific sources that back up the data provided in a statement". <strong>Ranks</strong> say how much to trust it: preferred (most current, best consensus), normal ("assigned to all statements by default") and deprecated (statements "known to include errors").</p>
+        <p>In SPARQL this gives two routes. <code>wdt:P166</code> is the truthy shortcut: item straight to value, best non-deprecated rank only (preferred if any exist, otherwise normal), qualifiers ignored. The full route is <code>p:P166</code> to the statement node, <code>ps:P166</code> to the value, <code>pq:P585</code> to the qualifier. Vellum's extract used the full route, because it needed the year.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>QIDs settle who is who<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Names collide. In Vellum's extract, 8 institution labels are shared by two different items, "King's College" and "University of Strasbourg" among them. Key the graph on names and those pairs merge into one node, and every EDUCATED_AT edge into either goes to the wrong place without an error. Key it on QIDs and they stay apart. The model below makes <code>qid</code> the key on every node for that reason, with <code>name</code> for people to read.</p>
+        <p>Here identity came free, because every record arrived with a QID. When your sources share no key at all, deciding which records are the same entity is its own discipline, taught in <a href="https://phoebefu6.github.io/learn-entity-resolution-with-phoebe/courses/01-no-shared-key.html">Entity Resolution, session 1: no shared key ↗</a>. Do that first, then build the graph on the identifiers it produces.</p>
+        <p>One more identity lesson from the build. Many items now carry their English name only as a "mul" label (default for all languages). An English-only label request returned no name for Marie Curie (Q7186); asking for English with a mul fallback fixed it. 103 entities in the extract carried only a mul label. Without the QID, those would have been nameless nodes.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The graph is only as true as its edges<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A real artefact in the extract, checked in the raw data: Theodor Zincke (Q90591) lists Otto Hahn (Q57065) as both a doctoral advisor (P184) and a doctoral student (P185), while Hahn lists Zincke as his advisor. So Vellum's graph holds a two-node loop: Hahn advised Zincke, and Zincke advised Hahn. Any "academic ancestors, all the way up" query that walks into it will go round. The graph did exactly what it was told; the edge is the problem.</p>
+        <p>The opposite failure is the missing edge. Hogan and colleagues describe the <strong>Open World Assumption</strong>: absence of an edge does not mean the fact is false, since it "could be part of some knowledge not (yet) described by the graph". A Closed World Assumption treats unknown as false. Read a Wikidata extract open world. So when a query for Marie Curie's laureate students returns 0 rows in this extract, the honest reading is "not recorded here", not "none".</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Wikidata's licence and its ranks.</strong> Structured data in Wikidata's main, Property and Lexeme namespaces is released under CC0, which is why Vellum can copy it into a private graph without attribution terms; text in other namespaces is CC BY-SA. And the deprecated rank is Wikidata's own mechanism for keeping a known-wrong statement visible but out of the truthy view. The extract skipped deprecated statements, so a statement the community has marked as wrong never became an edge here.</p>
+    </div>
+  </section>
+
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Vellum's graph model</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Five steps, no install. You take the ten desk questions from session 1, pull out every kind of entity and relation they mention, and fix the model: labels, key properties, relationship types, directions, and where the year goes. Then you check the model against the real graph in the query box and write section 2 of the design note.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 390" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Vellum's graph model with real counts from the extract. Four node labels: Person 1,523 nodes, Institution 1,837, Country 141, Prize 6. Five relationship types: WON 1,005 from Person to Prize, carrying the year; ADVISED 966 from Person to Person, advisor to student; EDUCATED_AT 3,566 and EMPLOYED_BY 3,413 from Person to Institution; CITIZEN_OF 2,004 from Person to Country. 3,507 nodes and 10,954 typed edges in all.">
+        <defs>
+          <filter id="k2dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="89" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="k2dHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#004238" stroke-width="1" opacity=".35"/></pattern>
+          <marker id="k2dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k2dH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k2dL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k2dS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k2dP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k2dV { font: 800 16px Inter, sans-serif; fill: #002B25; }
+          .k2dN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k2dH" x="40" y="28">VELLUM'S MODEL: 4 NODE LABELS, 5 RELATIONSHIP TYPES, REAL COUNTS</text>
+
+        <g filter="url(#k2dSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="300" y="150" width="180" height="80" rx="40" transform="rotate(-0.8 390 190)" fill="url(#k2dHc)"/>
+          <rect x="680" y="140" width="170" height="60" rx="10" transform="rotate(1 765 170)" fill="#FFFFFF"/>
+          <rect x="680" y="262" width="170" height="64" rx="10" transform="rotate(-1 765 294)" fill="#FFFFFF"/>
+          <rect x="40" y="262" width="160" height="64" rx="10" transform="rotate(0.9 120 294)" fill="#FFFFFF"/>
+          <rect x="520" y="180" width="128" height="22" rx="11" transform="rotate(-1.2 584 191)" fill="#F4B860"/>
+          <path d="M350 150 C330 76 450 76 430 148" marker-end="url(#k2dAr)"/>
+          <path d="M482 170 L676 170" marker-end="url(#k2dAr)"/>
+          <path d="M480 222 C540 236 600 282 676 288" marker-end="url(#k2dAr)"/>
+          <path d="M440 232 C470 320 580 320 676 318" marker-end="url(#k2dAr)"/>
+          <path d="M318 228 C280 260 240 285 204 292" marker-end="url(#k2dAr)"/>
+        </g>
+
+        <text class="k2dP" x="324" y="176">Person</text>
+        <text class="k2dV" x="324" y="200">1,523</text>
+        <text class="k2dS" x="324" y="218">key: qid, plus name</text>
+
+        <text class="k2dP" x="698" y="164">Prize</text>
+        <text class="k2dV" x="698" y="188">6</text>
+
+        <text class="k2dP" x="698" y="286">Institution</text>
+        <text class="k2dV" x="698" y="310">1,837</text>
+
+        <text class="k2dP" x="58" y="286">Country</text>
+        <text class="k2dV" x="58" y="310">141</text>
+
+        <text class="k2dP" x="466" y="98">ADVISED 966</text>
+        <text class="k2dS" x="466" y="114">advisor to student</text>
+        <text class="k2dP" x="510" y="160">WON 1,005</text>
+        <text class="k2dL" x="532" y="196">year on the edge</text>
+        <text class="k2dP" x="548" y="228">EDUCATED_AT 3,566</text>
+        <text class="k2dP" x="500" y="346">EMPLOYED_BY 3,413</text>
+        <text class="k2dP" x="40" y="246">CITIZEN_OF 2,004</text>
+
+        <text class="k2dN" x="40" y="374">Real counts from the Wikidata extract: 3,507 nodes, 10,954 typed edges. Hatched: the label most edges touch.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - every edge starts at a Person; the only edge with a property is WON</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step">
+        <p><strong>List the entities in the ten desk questions.</strong> Go back to session 1's list and underline every noun that is a thing with an identity. Group them by kind. Those kinds are your node labels.</p>
+        <div class="prompt-box good"><span class="label">★ Step 1 · entities, grouped</span>People ........ Dorothy Hodgkin, Max Born, Niels Bohr, Max Planck,
+                Max Delbrück, Ernest Rutherford, Enrico Fermi,
+                Esther Duflo, and every advisor and student between
+Prizes ........ the six Nobel prizes (Physics, Chemistry, Medicine,
+                Literature, Peace, Economic Sciences)
+Institutions .. "where was Bohr educated?"
+Countries ..... "which country was Bohr's advisor a citizen of?"
+Not entities .. years, birth dates: values, so properties</div>
+      </div>
+      <div class="step">
+        <p><strong>Choose labels and the key property.</strong> One label per kind. Every node gets <code>qid</code> as its key and <code>name</code> for display. Remember the 8 institution labels shared by two items: a name is not a key.</p>
+        <div class="prompt-box good"><span class="label">★ Step 2 · node labels</span>(:Person      {qid, name})     key: qid
+(:Institution {qid, name})     key: qid
+(:Country     {qid, name})     key: qid
+(:Prize       {qid, name})     key: qid
+Why qid: "King's College" names two different items in the extract.</div>
+      </div>
+      <div class="step">
+        <p><strong>Choose relationship types and their direction.</strong> One type per Wikidata property used. Direction is a decision, not a detail: <code>ADVISED</code> points from advisor to student, so "Duflo's advisors" walks the arrow backwards and "Planck's students" walks it forwards. Write the direction down once, or every query author will guess.</p>
+        <div class="prompt-box good"><span class="label">★ Step 3 · relationship types</span>(:Person)-[:WON {year}]-&gt;(:Prize)              from P166 + P585
+(:Person)-[:ADVISED]-&gt;(:Person)                 advisor -&gt; student
+                                                 from P184 and P185
+(:Person)-[:EDUCATED_AT]-&gt;(:Institution)        from P69
+(:Person)-[:EMPLOYED_BY]-&gt;(:Institution)        from P108
+(:Person)-[:CITIZEN_OF]-&gt;(:Country)             from P27
+Wikidata stores both P184 (my advisor) and P185 (my student);
+the model keeps ONE edge type and one direction for both.</div>
+      </div>
+      <div class="step">
+        <p><strong>Decide where the year goes, and write the same fact both ways.</strong> In the property graph it is an edge property. In Wikidata it is a qualifier on the statement. Compare the two SPARQL forms below: the truthy one cannot return the year at all.</p>
+        <div class="prompt-box good"><span class="label">★ Step 4 · one fact, three writings</span>Property graph:
+  (:Person {qid:"Q58978", name:"Max Born"})
+    -[:WON {year:1954}]-&gt;(:Prize {qid:"Q38104"})
+
+Wikidata, truthy (no year possible):
+  SELECT ?prize WHERE { wd:Q58978 wdt:P166 ?prize . }
+
+Wikidata, full statement (keeps the qualifier):
+  SELECT ?prize ?when WHERE {
+    wd:Q58978 p:P166 ?st .
+    ?st ps:P166 ?prize .
+    OPTIONAL { ?st pq:P585 ?when . }
+  }</div>
+        <div class="callout tip">
+          <p><strong>Self-study: run both at query.wikidata.org.</strong> Paste each query into the public Wikidata Query Service and compare the columns. No outputs are printed here, because Born's award list on Wikidata is live data and will not match a snapshot; what matters is that only the second query has a <code>?when</code> column to fill.</p>
+        </div>
+      </div>
+      <div class="step">
+        <p><strong>Write section 2 of the design note.</strong> Check the model against the real graph first: click the two buttons in the query box below. Marie Curie should come back with two prizes, Physics and Chemistry, which proves WON is one edge per award and not one per person. Max Born's students and grand-students who won should come back as 4 rows, which proves ADVISED points the way you decided.</p>
+        <div class="prompt-box good"><span class="label">★ Step 5 · Vellum graph design note, section 2</span>Model: 4 node labels, 5 relationship types, all keyed on Wikidata QID.
+  Person 1,523 · Institution 1,837 · Country 141 · Prize 6
+  WON 1,005 (year on the edge) · EDUCATED_AT 3,566 · EMPLOYED_BY 3,413
+  ADVISED 966 (advisor -&gt; student) · CITIZEN_OF 2,004
+Checks: Marie Curie WON -&gt; 2 rows; Max Born ADVISED*1..2 then WON -&gt; 4 rows.
+Watch: Zincke and Hahn advise each other (a two-node loop from the data);
+       cap variable-length ADVISED walks.</div>
+      </div>
+    </div>
+
+    <div class="kgr-query">
+      <template data-q="Marie Curie's prizes">MATCH (p:Person {name:"Marie Curie"})-[:WON]-&gt;(z:Prize) RETURN z</template>
+      <template data-q="Born's students and grand-students who won">MATCH (p:Person {name:"Max Born"})-[:ADVISED*1..2]-&gt;(s)-[:WON]-&gt;(z:Prize) RETURN s</template>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>Flip an arrow and see the model bite.</strong> In the Born pattern, change <code>-[:ADVISED*1..2]-&gt;(s)</code> to <code>&lt;-[:ADVISED*1..2]-(s)</code>. You are now asking for Born's advisors and their advisors who won, a different question with a different answer. Direction is part of the meaning, which is why step 3 wrote it down.</p>
+    </div>
+  </section>
+
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before session 3</h2>
+      <span class="tag exercise">30 min</span>
+    </div>
+    <ol>
+      <li><strong>Model your own ten questions.</strong> Take the questions from session 1's homework and write the node labels, relationship types and directions they need, in the step 3 format.</li>
+      <li><strong>Find one edge property.</strong> Pick a relation in your domain that carries a value only meaningful for the pair (a date, a role, an amount). Write it once as an edge property and once as a statement with a qualifier.</li>
+      <li><strong>Choose your key.</strong> For each label, name the identifier you would key on. If any label has no shared identifier across your sources, note it and read the entity resolution link in Part 3 before session 3.</li>
+      <li><strong>At query.wikidata.org,</strong> run the full-statement query from step 4 for another laureate you know of. Look for a qualifier and a reference on the result, and write down whether either was missing.</li>
+    </ol>
+  </section>
+
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 2 gets stamped in your passport.</p>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · Max Born won the Physics prize in 1954. Where does the year belong, in a property graph and in Wikidata?</p>
+      <button class="qopt" type="button">A · On the Max Born node in both, because it is his prize year</button>
+      <button class="qopt" type="button">B · On the Prize node in the property graph; as a separate item in Wikidata</button>
+      <button class="qopt" type="button">C · On the WON edge as a property; as a P585 qualifier on the P166 statement</button>
+      <button class="qopt" type="button">D · Nowhere: graphs cannot store dates</button>
+      <p class="qwhy">The year describes one person winning one prize, so it sits on the edge. Wikidata does the same job with a statement node: P166 = Q38104, qualified by P585 = 1954. On the person it breaks for Marie Curie, who won twice; on the prize node it is meaningless.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">2 · What is a qualifier in Wikidata?</p>
+      <button class="qopt" type="button">A · A label that says what kind of item something is</button>
+      <button class="qopt" type="button">B · A property-value pair attached to a statement that refines its value, such as point in time</button>
+      <button class="qopt" type="button">C · The source that backs up a statement</button>
+      <button class="qopt" type="button">D · A flag that marks a statement as wrong</button>
+      <p class="qwhy">Qualifiers "further describe or refine the value of a property given in a statement". C is a reference; D is the deprecated rank. And the truthy <code>wdt:</code> shortcut ignores qualifiers, so you need <code>p:</code>, <code>ps:</code> and <code>pq:</code> to read one.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="3">
+      <p class="qtext">3 · Why does Vellum's model key every node on its QID rather than its name?</p>
+      <button class="qopt" type="button">A · QIDs are shorter, so queries run faster</button>
+      <button class="qopt" type="button">B · Names are not allowed as properties in a property graph</button>
+      <button class="qopt" type="button">C · Wikidata items do not have names</button>
+      <button class="qopt" type="button">D · Names collide: 8 institution labels in the extract are shared by two items, and a name key would merge them silently</button>
+      <p class="qwhy">"King's College" names two different items in the extract. Keyed on names, their edges would land on one node without any error. Names stay as a display property. When your sources have no shared id at all, entity resolution comes first.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Hogan et al. (2021), Knowledge Graphs, ACM Computing Surveys 54(4)</span><span class="note">Property graph, directed edge-labelled graph, heterogeneous graph, open world assumption; read at source (arXiv)</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">W3C RDF 1.1 Primer (Working Group Note, 24 June 2014)</span><span class="note">Triples, IRIs, literals only as objects, blank nodes</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">W3C RDF 1.2 Concepts (Candidate Recommendation Draft, 16 November 2026)</span><span class="note">Triple terms; not yet a Recommendation</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">ISO/IEC 39075:2024, GQL</span><span class="note">Published 2024-04-12; scope read at the IEC webstore, iso.org blocked the fetch</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">ISO/IEC 9075-16:2023, SQL/PGQ</span><span class="note">Reported from catalogue snippets; not read at source</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Wikidata help pages (Items, Statements, Ranking, Copyright) and the Wikibase RDF dump format</span><span class="note">Statements, qualifiers, references, ranks, CC0, truthy wdt: vs p:/ps:/pq:</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The Wikidata extract, fetched 2026-11-16</span><span class="note">Node and edge counts, the 8 shared labels, the mul labels, the Zincke and Hahn loop</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Vellum Press and its graph model</span><span class="note">Constructed; every count and query result is computed on the real graph</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 2 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Property graph</b><span>Labels and key-value properties on nodes AND on edges.</span></div>
+      <div class="cheat-item"><b>Pair fact, edge property</b><span>A value that only makes sense for two entities (a year) goes on the edge.</span></div>
+      <div class="cheat-item"><b>RDF triple</b><span>Subject, predicate, object; IRIs as global names; literals only as objects.</span></div>
+      <div class="cheat-item"><b>Wikidata statement</b><span>Property-value pair plus qualifiers, references, rank. Truthy wdt: drops qualifiers.</span></div>
+      <div class="cheat-item"><b>Key on QIDs</b><span>8 institution labels in the extract are shared by two items. Names are for display.</span></div>
+      <div class="cheat-item"><b>Open world</b><span>A missing edge is unknown, not false. A wrong edge (Zincke and Hahn) is still an edge.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p>You have a model: four labels, five relationship types, and the year on the edge. Session 3 queries it two ways, Cypher over the property graph and SPARQL over Wikidata, the same questions side by side, including the variable-length walks the Zincke and Hahn loop will test.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 2 of 6 · learn-knowledge-graphs-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="01-when-the-question-is-about-relationships.html">← Prev: When the question is about relationships</a> &nbsp;·&nbsp; <a href="03-cypher-and-sparql-side-by-side.html">Next: Cypher and SPARQL, side by side →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/kgr-sample.js?v=1"></script>
+<script src="../assets/kgr-live.js?v=4"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 4 of 6. The bench: 24 questions over a real Wikidata graph, answered by graph traversal and by BM25 chunk retrieval, computed in your browser. Answer recall by hop depth, context cost, and the missing edge that fails silently.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="The multi-hop lab - learn knowledge graphs with phoebe">
+<meta property="og:description" content="Session 4 of 6. Chunks at k = 10 find 9 of 24 questions, none past two hops; the graph finds 24, until one edge type was never extracted and it finds 4, with no error.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/courses/04-the-multi-hop-lab.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The multi-hop lab - learn knowledge graphs with phoebe">
+<meta name="twitter:description" content="Session 4 of 6. Graph vs chunks on 24 real questions, by hop depth.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 4 · The multi-hop lab - learn knowledge graphs with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-knowledge-graphs-with-phoebe</a> / Session 4 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Knowledge Graphs with Phoebe · Session 4 of 6</div>
+    <h1>The multi-hop <span class="accent">lab</span></h1>
+    <p class="sub">Sessions 1 to 3 claimed that chunk retrieval loses the chain after the first hop and that a graph keeps it. Tonight that claim gets numbers. The bench asks 24 real questions, six at each depth from one to four hops, and answers every one twice in your browser: by walking the graph, and by retrieving the top k text chunks. Then it breaks the graph the way real extraction breaks it, and shows you what the failure looks like. It looks like nothing.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Bench night</span>
+      <span class="chip audience">Data and ML engineers</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · Two methods, the ladder, the trap</span>
+      <span class="a3" style="flex:5">18-40 · Build-along: run the lab</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we start</h2>
+    </div>
+    <p class="lede">Vellum's design note so far has a question sort, a graph model and four queries. The editors' question for tonight is blunter: the desk already has a document search, so what would a graph actually find that search does not, and what would it cost to keep it true? The lab answers the first half with measured numbers and puts a price on the second.</p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">★ Build-along = do it yourself</span>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Constructed Vellum example</span>
+      <p>Vellum Press and its desk are constructed. The graph is real: Wikidata (CC0), fetched 2026-11-16, 1,523 people (1,000 laureates plus their advisors two generations up), 1,837 institutions, 141 countries, 6 prizes and 10,954 typed edges. The chunk corpus is <strong>generated</strong> from the same facts, one plain sentence per fact, so both methods see exactly the same knowledge. That is labelled on the widget. Every number is computed live, and a separate Python reference reproduces all of them.</p>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> Section 4 of Vellum's graph design note: answer recall by hop depth for both methods, the context each one spends, and the one extraction gap that would make the graph answer 4 of 24 questions without a single error message.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers how each method answers, and what counts as found</span>
+      <h2>Two answers to every question</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">The graph side runs a pattern from the question's named person along typed edges and returns rows. The chunk side scores every chunk against the question's words with BM25 and keeps the top k. The rule for "found" is the same strict one on both sides: the complete answer, with its evidence.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two pipelines from one question. Top, graph: the question becomes a pattern anchored on a named person, the pattern walks typed edges up to the hop limit, and found means the returned rows equal the full answer. Bottom, chunks: the question's words are scored by BM25 against 6,351 two-fact chunks, the top k are kept, and found means every fact on the answer path is inside those k.">
+        <defs>
+          <filter id="k4aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="13" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="k4aHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#004238" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="k4aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k4aH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k4aP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k4aL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k4aS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k4aI { font: 400 11px Inter, sans-serif; fill: #11211E; }
+          .k4aN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k4aH" x="30" y="28">ONE QUESTION, TWO WAYS TO ANSWER IT</text>
+
+        <g filter="url(#k4aSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="118" width="150" height="70" rx="10" transform="rotate(-1 105 153)" fill="#F4B860"/>
+          <rect x="230" y="50" width="190" height="64" rx="10" transform="rotate(0.6 325 82)" fill="#E9F5F2"/>
+          <rect x="460" y="50" width="190" height="64" rx="10" transform="rotate(-0.5 555 82)" fill="#E9F5F2"/>
+          <rect x="690" y="50" width="160" height="64" rx="10" transform="rotate(0.7 770 82)" fill="#FFFFFF" stroke="#004238"/>
+          <rect x="230" y="196" width="190" height="64" rx="10" transform="rotate(-0.6 325 228)" fill="url(#k4aHc)"/>
+          <rect x="460" y="196" width="190" height="64" rx="10" transform="rotate(0.5 555 228)" fill="#FFFFFF"/>
+          <rect x="690" y="196" width="160" height="64" rx="10" transform="rotate(-0.7 770 228)" fill="#FFFFFF" stroke="#004238"/>
+          <path d="M184 140 C200 110 210 90 226 84" marker-end="url(#k4aAr)"/>
+          <path d="M184 168 C200 196 210 220 226 226" marker-end="url(#k4aAr)"/>
+          <path d="M424 82 L456 82" marker-end="url(#k4aAr)"/>
+          <path d="M654 82 L686 82" marker-end="url(#k4aAr)"/>
+          <path d="M424 228 L456 228" marker-end="url(#k4aAr)"/>
+          <path d="M654 228 L686 228" marker-end="url(#k4aAr)"/>
+        </g>
+
+        <text class="k4aL" x="44" y="148">The question</text>
+        <text class="k4aI" x="44" y="166">names one person</text>
+
+        <text class="k4aP" x="246" y="76">Pattern from the anchor</text>
+        <text class="k4aS" x="246" y="96">(p {name})&lt;-[:ADVISED*3]-(b)</text>
+        <text class="k4aP" x="476" y="76">Walk typed edges</text>
+        <text class="k4aS" x="476" y="96">stop at the hop limit</text>
+        <text class="k4aP" x="704" y="76">Found if</text>
+        <text class="k4aS" x="704" y="96">rows = the full answer</text>
+
+        <text class="k4aP" x="246" y="222">BM25 over 6,351 chunks</text>
+        <text class="k4aS" x="246" y="242">two facts per chunk</text>
+        <text class="k4aP" x="476" y="222">Keep the top k</text>
+        <text class="k4aS" x="476" y="242">3, 10, 30 or 100</text>
+        <text class="k4aP" x="704" y="222">Found if</text>
+        <text class="k4aS" x="704" y="242">every fact is in the k</text>
+
+        <text class="k4aN" x="30" y="296">Both sides read the same 10,954 facts. The graph holds them as edges; the chunks hold them as sentences.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - same facts, same strict test; the only difference is how the evidence is reached</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The graph side: a pattern, a walk, rows<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Each question carries its pattern in the small Cypher subset from session 3, for example <code>MATCH (p:Person {name:"Esther Duflo"})&lt;-[:ADVISED*3]-(b)-[:WON]-&gt;(z:Prize) RETURN z</code>. The engine starts at the named person and walks only edges of the named types, never reusing an edge within one path, as Cypher does. A question counts as found only when the rows returned are exactly the full answer: three of Max Planck's students won, so returning two is not found.</p>
+        <p>The <strong>hop limit</strong> lever stops the walk after h edges from the anchor. It stands for retrievers that only fetch an entity's immediate neighbourhood. The <strong>edge type never extracted</strong> lever deletes one relation type from the graph before the walk, which is what a missed extraction does.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The chunk side: BM25, top k, and the strict found rule<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Every fact becomes a sentence: "Max Born won the Nobel Prize in Physics in 1954." An advisor fact appears on both people's pages, as it would in two biographies. Each person's sentences are cut into chunks of F facts (1, 2, 4 or 8). BM25 scores each chunk with Lucene's settings (k1 = 1.2, b = 0.75, Lucene's IDF), ties broken by chunk order, and the top k are kept.</p>
+        <p>A question is found when every fact on its answer path is in those k chunks. The table also shows "k needed": the smallest k that would have found it. For the four-hop Duflo question it is 350. That number is the honest version of "just retrieve more".</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>What is generated, what is real, what is simplified<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>Real:</strong> every entity and edge, from Wikidata. <strong>Generated:</strong> the sentences, from templates, so the text is cleaner than any real biography: one fact per sentence, every name spelled the Wikidata way. Real text would make the chunk side worse (pronouns, the bridge person called "his supervisor") and the graph side harder to build (extraction has to find those facts first).</p>
+        <p><strong>Simplified:</strong> the chunk side is single-shot keyword retrieval. Embedding retrieval, hybrid search and rerankers belong to the <a href="https://phoebefu6.github.io/learn-rag-with-phoebe/courses/b5-metadata-hybrid.html">RAG course ↗</a>; a multi-step retriever that re-queries with "Abhijit Banerjee" after reading hop 1 would recover some deeper questions. The tokeniser keeps only a to z and digits, so "Delbrück" becomes two tokens, "delbr" and "ck"; it still ranks Delbrück's chunks first.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Why a strict "found".</strong> Han and colleagues (2025), comparing RAG and GraphRAG systematically, report that LLM-as-judge verdicts on summaries show clear position bias: swap the order of two answers and the verdict can flip. A lenient judge rewards a plausible answer. Counting the evidence path, as the bench does, cannot be talked round.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers the ladder: k, hop limit, full depth</span>
+      <h2>Five rungs and a trap</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">The ladder moves one lever at a time. The chunk rungs raise k; the graph rungs raise the hop limit. Read two numbers on every rung: how many of the 24 questions are found, and how much context it took.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Questions found out of 24 at each rung, measured on the bench. R1 k equals 3 chunks: 4, with 52 words of context per question. R2 k equals 10: 9, 174 words. R3 k equals 30: 9, 530 words. R4 graph with a one-hop limit: 6. R5 graph at full depth: 24, using 4.0 facts per question. Trap, advisor edges never extracted: 4, with no error.">
+        <defs>
+          <filter id="k4bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="29" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+        </defs>
+        <style>
+          .k4bH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k4bL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k4bS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k4bV { font: 800 13px Inter, sans-serif; fill: #002B25; }
+          .k4bR { font: 800 13px Inter, sans-serif; fill: #991B1B; }
+          .k4bN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k4bH" x="30" y="28">QUESTIONS FOUND, OUT OF 24, RUNG BY RUNG</text>
+        <text class="k4bS" x="600" y="28">bar = questions found</text>
+
+        <g filter="url(#k4bSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="260" y="56" width="80" height="30" rx="4" fill="#F4B860"/>
+          <rect x="260" y="104" width="180" height="30" rx="4" fill="#F4B860"/>
+          <rect x="260" y="152" width="180" height="30" rx="4" fill="#F4B860"/>
+          <rect x="260" y="200" width="120" height="30" rx="4" fill="#A8D8CE"/>
+          <rect x="260" y="248" width="480" height="30" rx="4" fill="#004238"/>
+          <rect x="260" y="296" width="80" height="30" rx="4" fill="#FEF2F2" stroke="#991B1B"/>
+          <path d="M260 46 L260 336"/>
+          <path d="M740 46 L740 336" stroke="#C2D5D0" stroke-dasharray="4 4"/>
+        </g>
+
+        <text class="k4bL" x="240" y="76" text-anchor="end">R1 · k = 3 chunks</text>
+        <text class="k4bL" x="240" y="124" text-anchor="end">R2 · k = 10 chunks</text>
+        <text class="k4bL" x="240" y="172" text-anchor="end">R3 · k = 30 chunks</text>
+        <text class="k4bL" x="240" y="220" text-anchor="end">R4 · graph, 1 hop</text>
+        <text class="k4bL" x="240" y="268" text-anchor="end">R5 · graph, full depth</text>
+        <text class="k4bL" x="240" y="316" text-anchor="end">Trap · no ADVISED edges</text>
+
+        <text class="k4bV" x="350" y="76">4</text>
+        <text class="k4bS" x="372" y="76">52 words per question</text>
+        <text class="k4bV" x="450" y="124">9</text>
+        <text class="k4bS" x="472" y="124">174 words per question</text>
+        <text class="k4bV" x="450" y="172">9</text>
+        <text class="k4bS" x="472" y="172">530 words, same 9 found</text>
+        <text class="k4bV" x="390" y="220">6</text>
+        <text class="k4bS" x="412" y="220">one-hop questions only</text>
+        <text class="k4bV" x="750" y="268">24</text>
+        <text class="k4bS" x="566" y="242">4.0 facts per question</text>
+        <text class="k4bR" x="350" y="316">4</text>
+        <text class="k4bS" x="372" y="316">and not one error message</text>
+
+        <text class="k4bN" x="30" y="362">Measured live on the bench, two facts per chunk. Your clicks reproduce every number; the dashed line is 24.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - more chunks stop paying at k = 10; the graph pays only at full depth, and only while its edges exist</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Reading the ladder<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <table class="clean">
+          <tr><th>Rung</th><th>Found</th><th>1 / 2 / 3 / 4 hops</th><th>Context per question</th></tr>
+          <tr><td>R1 · k = 3</td><td>4 of 24</td><td>4 / 0 / 0 / 0</td><td>52 words</td></tr>
+          <tr><td>R2 · k = 10</td><td>9 of 24</td><td>6 / 3 / 0 / 0</td><td>174 words</td></tr>
+          <tr><td>R3 · k = 30</td><td>9 of 24</td><td>6 / 3 / 0 / 0</td><td>530 words</td></tr>
+          <tr><td>R4 · graph, 1 hop</td><td>6 of 24</td><td>6 / 0 / 0 / 0</td><td>-</td></tr>
+          <tr><td>R5 · graph, full depth</td><td>24 of 24</td><td>6 / 6 / 6 / 6</td><td>4.0 facts</td></tr>
+          <tr><td>Trap · ADVISED never extracted</td><td>4 of 24</td><td>4 / 0 / 0 / 0</td><td>-</td></tr>
+        </table>
+        <p>Two readings. First, R2 to R3 triples the text and finds nothing new: the missing facts are not just below the cut, they are at ranks 104 to 2,232. Second, the graph at one hop (R4) is no better than chunks; a graph earns its keep only when the query actually walks. Hop limits of 1, 2, 3 and 4 find 6, 12, 18 and 24.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Chunk size against k: the whole grid<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <table class="clean">
+          <tr><th>Facts per chunk</th><th>k = 3</th><th>k = 10</th><th>k = 30</th><th>k = 100</th></tr>
+          <tr><td>1 (11,920 chunks)</td><td>2 · 27 words</td><td>5 · 87</td><td>7 · 268</td><td>7 · 900</td></tr>
+          <tr><td>2 (6,351 chunks)</td><td>4 · 52</td><td>9 · 174</td><td>9 · 530</td><td>9 · 1,765</td></tr>
+          <tr><td>4 (3,549 chunks)</td><td>5 · 100</td><td>10 · 338</td><td>10 · 1,007</td><td>13 · 3,450</td></tr>
+          <tr><td>8 (2,117 chunks)</td><td>8 · 178</td><td>9 · 595</td><td>12 · 1,770</td><td>15 · 6,001</td></tr>
+        </table>
+        <p>Each cell is questions found out of 24, then words of context per question. Bigger chunks carry more facts per retrieval, so recall rises, and so does the text an LLM would have to read. The best cell on the grid is 15 of 24 at 6,001 words per question. No setting reaches 24.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Chunk size cuts both ways in GraphRAG too.</strong> Edge and colleagues (Microsoft, 2024) report that with 600-token chunks GPT-4 extracted almost twice as many entity references as with 2,400-token chunks. Bigger chunks are cheaper to process and lose facts at extraction; smaller ones keep facts and cost more calls. The same trade shows up on the bench's retrieval side.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers the missing edge and silent failure</span>
+      <h2>The edge nobody extracted</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">A graph is only as complete as its extraction. Remove the ADVISED relation, as if the pipeline never learned to pull "doctoral advisor" out of biographies, and the graph drops from 24 questions to 4. Nothing errors. The queries run, return zero rows, and look exactly like questions whose true answer is "none".</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Before and after for the Duflo question. Left, every edge type extracted: the pattern walks three ADVISED edges and one WON edge and returns one row, the Economics prize. Right, ADVISED never extracted: the pattern has no edge to walk and returns zero rows, with no error. The chunk side is unchanged, because the sentences still exist.">
+        <defs>
+          <filter id="k4cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="47" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <marker id="k4cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k4cH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k4cP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k4cR { font: 800 12px Inter, sans-serif; fill: #991B1B; }
+          .k4cL { font: 600 11px Inter, sans-serif; fill: #11211E; }
+          .k4cS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k4cN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k4cH" x="40" y="28">SAME QUERY, ONE RELATION TYPE MISSING</text>
+
+        <g filter="url(#k4cSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="40" y="44" width="390" height="190" rx="12" transform="rotate(-0.4 235 139)" fill="#E9F5F2" stroke="#004238"/>
+          <rect x="450" y="44" width="390" height="190" rx="12" transform="rotate(0.4 645 139)" fill="#FEF2F2" stroke="#FCA5A5"/>
+          <circle cx="80" cy="120" r="14" fill="#FFFFFF"/>
+          <circle cx="160" cy="120" r="14" fill="#FFFFFF"/>
+          <circle cx="240" cy="120" r="14" fill="#FFFFFF"/>
+          <circle cx="320" cy="120" r="14" fill="#FFFFFF"/>
+          <rect x="370" y="104" width="40" height="32" rx="4" fill="#F4B860"/>
+          <path d="M145 120 L97 120" marker-end="url(#k4cAr)"/>
+          <path d="M225 120 L177 120" marker-end="url(#k4cAr)"/>
+          <path d="M305 120 L257 120" marker-end="url(#k4cAr)"/>
+          <path d="M335 120 L366 120" marker-end="url(#k4cAr)"/>
+          <circle cx="490" cy="120" r="14" fill="#FFFFFF"/>
+          <circle cx="570" cy="120" r="14" fill="#FFFFFF"/>
+          <circle cx="650" cy="120" r="14" fill="#FFFFFF"/>
+          <circle cx="730" cy="120" r="14" fill="#FFFFFF"/>
+          <rect x="780" y="104" width="40" height="32" rx="4" fill="#F4B860"/>
+          <path d="M745 120 L776 120" marker-end="url(#k4cAr)"/>
+        </g>
+
+        <text class="k4cP" x="58" y="70">Every edge type extracted</text>
+        <text class="k4cS" x="64" y="154">Duflo</text>
+        <text class="k4cS" x="140" y="154">Banerjee</text>
+        <text class="k4cS" x="222" y="154">Maskin</text>
+        <text class="k4cS" x="304" y="154">Arrow</text>
+        <text class="k4cL" x="58" y="190">rows returned: 1, the Economics prize</text>
+        <text class="k4cS" x="58" y="210">found</text>
+
+        <text class="k4cR" x="468" y="70">ADVISED never extracted</text>
+        <text class="k4cS" x="474" y="154">Duflo</text>
+        <text class="k4cS" x="550" y="154">Banerjee</text>
+        <text class="k4cS" x="632" y="154">Maskin</text>
+        <text class="k4cS" x="714" y="154">Arrow</text>
+        <text class="k4cL" x="468" y="190">rows returned: 0, and no error</text>
+        <text class="k4cS" x="468" y="210">reads exactly like "the answer is none"</text>
+
+        <text class="k4cN" x="40" y="270">Real Wikidata nodes. The people and the prize are still there; only the relation between them is gone.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - a missing relation type does not raise; it answers "nothing", which is the most believable wrong answer there is</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why the graph fails silently, and chunks do not fail this way<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A query engine has no idea which edges ought to exist. Asked for a path that is not in the graph, it correctly returns nothing. Hogan and colleagues name the stance a graph should be read under: the open world assumption, where a missing edge means "not known", not "false". Most applications quietly treat it as false.</p>
+        <p>The chunk side is untouched by the trap: the sentences about advisors are still in the corpus, so it still finds 9. That is the real asymmetry. Text keeps facts nobody modelled; a graph only keeps what extraction put in. The ADVISED trap removes 966 edges, 9 percent of the graph, and 20 of the 24 answers.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Which missing relation hurts which questions<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <table class="clean">
+          <tr><th>Never extracted</th><th>Graph found (of 24)</th><th>Why</th></tr>
+          <tr><td>ADVISED</td><td>4</td><td>20 of 24 questions walk an advisor edge</td></tr>
+          <tr><td>WON</td><td>9</td><td>prize questions at every depth end on WON</td></tr>
+          <tr><td>CITIZEN_OF</td><td>21</td><td>three questions end on a country</td></tr>
+          <tr><td>EDUCATED_AT</td><td>22</td><td>two questions end on a university</td></tr>
+          <tr><td>EMPLOYED_BY</td><td>23</td><td>one question</td></tr>
+        </table>
+        <p>The cost of a missing relation is set by your question set, not by the size of the relation. That is the argument for session 1's question sort: it tells you which relations your extraction must not miss, before you pay for extraction.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Coverage is the known weak point.</strong> In Han and colleagues' 2025 evaluation, knowledge-graph-based GraphRAG generally underperformed, which the authors put down to limited graph coverage: facts the questions needed were never in the graph. The bench's trap is the same failure, made small enough to see.</p>
+    </div>
+  </section>
+
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Run the lab, then write the result down</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Six steps on the bench below. You climb the ladder, read the per-hop split, try the chunk-size lever, pull the break, and write section 4 of Vellum's design note with the numbers your own clicks produced.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Questions found by hop depth at k equals 10, two facts per chunk, out of 6 per depth. Chunks: 6 at one hop, 3 at two hops, 0 at three and 0 at four. Graph at full depth: 6 at every depth.">
+        <defs>
+          <filter id="k4dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="53" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+        </defs>
+        <style>
+          .k4dH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k4dP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k4dL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k4dW { font: 800 13px Inter, sans-serif; fill: #FFFFFF; }
+          .k4dV { font: 800 13px Inter, sans-serif; fill: #11211E; }
+          .k4dS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k4dN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k4dH" x="30" y="28">FOUND BY HOP DEPTH, OUT OF 6 EACH (k = 10, TWO FACTS PER CHUNK)</text>
+
+        <g filter="url(#k4dSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="200" y="96" width="140" height="64" rx="6" fill="#F4B860"/>
+          <rect x="350" y="96" width="140" height="64" rx="6" fill="#FDF2E0"/>
+          <rect x="500" y="96" width="140" height="64" rx="6" fill="#FFFFFF"/>
+          <rect x="650" y="96" width="140" height="64" rx="6" fill="#FFFFFF"/>
+          <rect x="200" y="180" width="140" height="64" rx="6" fill="#004238"/>
+          <rect x="350" y="180" width="140" height="64" rx="6" fill="#004238"/>
+          <rect x="500" y="180" width="140" height="64" rx="6" fill="#004238"/>
+          <rect x="650" y="180" width="140" height="64" rx="6" fill="#004238"/>
+        </g>
+
+        <text class="k4dP" x="242" y="82">1 hop</text>
+        <text class="k4dP" x="392" y="82">2 hops</text>
+        <text class="k4dP" x="542" y="82">3 hops</text>
+        <text class="k4dP" x="692" y="82">4 hops</text>
+        <text class="k4dL" x="186" y="133" text-anchor="end">Chunks, top 10</text>
+        <text class="k4dL" x="186" y="217" text-anchor="end">Graph, full depth</text>
+
+        <text class="k4dV" x="252" y="133">6 / 6</text>
+        <text class="k4dV" x="402" y="133">3 / 6</text>
+        <text class="k4dV" x="552" y="133">0 / 6</text>
+        <text class="k4dV" x="702" y="133">0 / 6</text>
+        <text class="k4dW" x="252" y="217">6 / 6</text>
+        <text class="k4dW" x="402" y="217">6 / 6</text>
+        <text class="k4dW" x="552" y="217">6 / 6</text>
+        <text class="k4dW" x="702" y="217">6 / 6</text>
+
+        <text class="k4dS" x="200" y="270">Fill strength follows the count. Both rows read the same 10,954 facts.</text>
+        <text class="k4dN" x="30" y="300">Measured live on the bench at R2 / R5. The gap opens at two hops and is total from three.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - one hop is a tie; from three hops the chunk row is empty</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step">
+        <p><strong>Climb the chunk rungs.</strong> Click R1, R2 and R3 in turn. Watch the left number and the context words, not just the bar.</p>
+        <div class="prompt-box good"><span class="label">★ Step 1 · read these off the bench</span>R1  k = 3   chunks found  4 of 24   context  52 words per question
+R2  k = 10  chunks found  9 of 24   context 174 words
+R3  k = 30  chunks found  9 of 24   context 530 words
+Three times the text, zero more answers.</div>
+      </div>
+      <div class="step">
+        <p><strong>Climb the graph rungs.</strong> Click R4, then R5. Then set the hop limit lever to 2 and 3 yourself.</p>
+        <div class="prompt-box good"><span class="label">★ Step 2 · graph by hop limit</span>hop limit 1 (R4) .... 6 of 24
+hop limit 2 ......... 12 of 24
+hop limit 3 ......... 18 of 24
+hop limit 4 (R5) .... 24 of 24, using 4.0 facts per question</div>
+      </div>
+      <div class="step">
+        <p><strong>Open "All 24 questions" and find the k each one needed.</strong> Read the chunk column at R2: every question past two hops needs k in the hundreds or thousands.</p>
+        <div class="prompt-box good"><span class="label">★ Step 3 · k needed, two facts per chunk</span>q20 Duflo, 4 hops ........... k needed 350
+q13 Rutherford, 3 hops ...... k needed 434
+q11 Bohr's advisor's country  k needed 2,232 (2 hops, still lost)
+q07 Delbrück, 2 hops ........ k needed 9 (found at k = 10)</div>
+      </div>
+      <div class="step">
+        <p><strong>Try the chunk-size lever.</strong> Set chunk size to 8 facts and k to 100. Then set it back to 2.</p>
+        <div class="prompt-box good"><span class="label">★ Step 4 · the best the chunks can do</span>8 facts per chunk, k = 100:
+  chunks found ............ 15 of 24
+  context ................. 6,001 words per question
+No lever setting reaches 24.</div>
+      </div>
+      <div class="step">
+        <p><strong>Pull the break.</strong> Click the red Trap rung: ADVISED edges never extracted. Then try each other relation in the "Edge type never extracted" lever.</p>
+        <div class="prompt-box good"><span class="label">★ Step 5 · the silent failure</span>ADVISED never extracted ...... graph found 4 of 24
+chunks found ................. 9 of 24 (unchanged)
+WON never extracted .......... graph found 9
+EMPLOYED_BY never extracted .. graph found 23
+No query raised an error. Each returned fewer rows.</div>
+      </div>
+      <div class="step">
+        <p><strong>Write section 4 of the design note.</strong> Your numbers, your rungs, and the sentence the editors will remember.</p>
+        <div class="prompt-box good"><span class="label">★ Step 6 · Vellum graph design note, section 4</span>Multi-hop result (24 questions, real Wikidata graph):
+- Search (BM25, k = 10): 9 of 24; 6/3/0/0 by hop depth. More k does not help.
+- Graph at full depth: 24 of 24, about 4 facts of context per question.
+- Risk: if advisor relations are not extracted, the graph answers 4 of 24
+  and reports nothing wrong. Extraction coverage needs its own test set.</div>
+      </div>
+    </div>
+
+    <div class="kgr-bench" data-rung="r2"></div>
+
+    <div class="callout tip">
+      <p><strong>Keep a canary set.</strong> The trap is cheap to catch if you keep a handful of questions whose answers you know, one per relation type, and run them after every extraction job. A drop from 1 row to 0 on a canary is the only alarm a silent graph will ever give you.</p>
+    </div>
+  </section>
+
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before session 5</h2>
+      <span class="tag exercise">30 min</span>
+    </div>
+    <ol>
+      <li><strong>Find the cheapest chunk setting that finds 10 questions</strong> on the bench, and write down its context words. Compare it with the graph's 4.0 facts.</li>
+      <li><strong>List your relations by risk.</strong> For your own ten questions from session 1, count how many depend on each relation type, the way the "which missing relation hurts" table does.</li>
+      <li><strong>Write three canary questions</strong> for your riskiest relation, each with a known answer you could check after an extraction run.</li>
+      <li><strong>Read q11 in the question table.</strong> It is only two hops and needs k = 2,232. Write one sentence on why: what does the question share with the chunk it needs, and what does it not?</li>
+    </ol>
+  </section>
+
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 4 gets stamped in your passport.</p>
+
+    <div class="quiz-q" data-answer="3">
+      <p class="qtext">1 · Raising k from 10 to 30 at two facts per chunk changes chunk recall how?</p>
+      <button class="qopt" type="button">A · From 9 to 24 of 24</button>
+      <button class="qopt" type="button">B · From 9 to 15 of 24</button>
+      <button class="qopt" type="button">C · From 4 to 9 of 24</button>
+      <button class="qopt" type="button">D · Not at all: 9 of 24 both times, with context rising from 174 to 530 words</button>
+      <p class="qwhy">The facts the deeper questions need rank in the hundreds, far below 30. Tripling k triples what an LLM must read and finds nothing new. 4 to 9 is k = 3 to k = 10; 15 is the grid's best cell at 8 facts per chunk and k = 100.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · With ADVISED edges never extracted, the graph finds 4 of 24. What does a failing query return?</p>
+      <button class="qopt" type="button">A · Zero rows and no error, indistinguishable from a true "none"</button>
+      <button class="qopt" type="button">B · An error naming the missing relation type</button>
+      <button class="qopt" type="button">C · The chunk answer instead</button>
+      <button class="qopt" type="button">D · A partial path ending at the last known person</button>
+      <p class="qwhy">The engine cannot know an edge ought to exist, so it correctly returns nothing. That is why a missing extraction is silent, and why canary questions with known answers are the alarm you have to build yourself.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">3 · The graph at a one-hop limit (R4) finds 6 of 24, fewer than chunks at k = 10. What does that show?</p>
+      <button class="qopt" type="button">A · Graphs are worse than search for most questions</button>
+      <button class="qopt" type="button">B · The one-hop questions are too hard for a graph</button>
+      <button class="qopt" type="button">C · A graph only earns its keep when the query walks the hops; a neighbourhood lookup is no better than search</button>
+      <button class="qopt" type="button">D · The bench counts graph answers more strictly</button>
+      <p class="qwhy">At one hop the graph answers exactly the six one-hop questions, as chunks do; chunks at k = 10 also catch three of the two-hop ones. Raise the limit to 2, 3 and 4 and the graph finds 12, 18 and 24. The value is in the traversal, not the storage.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Wikidata extract around Nobel laureates (CC0)</span><span class="note">Fetched 2026-11-16 by SPARQL and the Wikidata API; the build script and raw files ship with the repository</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Robertson and Zaragoza (2009); Lucene BM25Similarity 9.12</span><span class="note">BM25 with Lucene's IDF and its defaults k1 1.2, b 0.75; implemented identically in JavaScript and Python</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Neo4j Cypher Manual (Cypher 25)</span><span class="note">Pattern and variable-length syntax for the bench's subset; relationship uniqueness per path</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Hogan et al. (2021), Knowledge Graphs</span><span class="note">The open world assumption: a missing edge means not known</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Edge et al. (2024); Han et al. (2025)</span><span class="note">Chunk size and extraction; position bias in LLM judges; coverage as GraphRAG's weak point</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">The chunk corpus</span><span class="note">Generated from the same facts with templates, labelled on the widget; cleaner than real text</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 4 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Strict found</b><span>Full answer with every fact on its path; no credit for a lucky word.</span></div>
+      <div class="cheat-item"><b>Chunks by depth</b><span>k = 10: 6 / 3 / 0 / 0 found at 1 / 2 / 3 / 4 hops.</span></div>
+      <div class="cheat-item"><b>More k stops paying</b><span>k 10 to 30: same 9 found, 174 to 530 words per question.</span></div>
+      <div class="cheat-item"><b>The graph must walk</b><span>Hop limit 1, 2, 3, 4 finds 6, 12, 18, 24.</span></div>
+      <div class="cheat-item"><b>Silent failure</b><span>No ADVISED edges: 4 of 24, zero rows, no error.</span></div>
+      <div class="cheat-item"><b>Canary questions</b><span>One known answer per relation type, run after every extraction.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p>The graph answers the questions you write. Session 5 asks the questions nobody writes: who sits between whole schools of science, who is central, which groups form. You will compute shortest paths, centrality and communities on Vellum's network in your browser, and meet the hub that wins every measure for a reason that has nothing to do with science.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 4 of 6 · learn-knowledge-graphs-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="03-cypher-and-sparql-side-by-side.html">← Prev: Cypher and SPARQL, side by side</a> &nbsp;·&nbsp; <a href="05-paths-centrality-communities.html">Next: Paths, centrality and communities →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/kgr-sample.js?v=1"></script>
+<script src="../assets/kgr-live.js?v=4"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

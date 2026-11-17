@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 6 of 6. Two ways a graph reaches the prompt (a subgraph as facts, or text-to-Cypher), Microsoft's GraphRAG and its costs, the evaluations that disagree about its gains, and a costed graph, vectors or both decision. Real Wikidata rows, constructed Vellum Press case.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="GraphRAG: when the graph feeds the LLM - learn knowledge graphs with phoebe">
+<meta property="og:description" content="Session 6 of 6. GraphRAG wins on global questions in its own paper; plain RAG wins single-hop facts in others. Read the disagreement, then make the graph, vectors or both call.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/courses/06-graphrag-when-the-graph-feeds-the-llm.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GraphRAG: when the graph feeds the LLM - learn knowledge graphs with phoebe">
+<meta name="twitter:description" content="Session 6 of 6. Graph as context, GraphRAG and its costs, the contested evidence, and the graph, vectors or both decision.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 6 · GraphRAG: when the graph feeds the LLM - learn knowledge graphs with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-knowledge-graphs-with-phoebe</a> / Session 6 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Knowledge Graphs with Phoebe · Session 6 of 6</div>
+    <h1>GraphRAG: when the graph <span class="accent">feeds the LLM</span></h1>
+    <p class="sub">A graph earns its keep twice: once when a query walks it, and again when what it found becomes the context a language model reads. Tonight we look at the two simple ways a graph reaches a prompt, at Microsoft's GraphRAG and what it costs to build, and at the evaluations that disagree about when any of it beats plain retrieval. Then Vellum makes its call: graph, vectors or both.</p>
+    <div class="chip-row">
+      <span class="chip level">🔴 Capstone</span>
+      <span class="chip audience">Data and ML engineers</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · Graph as context, summaries, the evidence</span>
+      <span class="a3" style="flex:5">18-40 · Capstone: graph, vectors or both</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we start</h2>
+    </div>
+    <p class="lede">Five sessions built a graph and learned to question it. Session 4 measured the payoff: graph traversal found all 24 bench questions, keyword chunks found 9, and a graph that never extracted the advisor relation found 4 without a single error. Tonight the graph's answer goes into a language model's prompt, and the question changes from "can the graph find it?" to "is the graph worth what it costs to build and keep?"</p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">★ Build-along = do it yourself</span>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Constructed Vellum example</span>
+      <p><strong>Vellum Press</strong>, the invented academic publisher, now has five sections of its graph design note: a question sort, a model, four queries, a measured multi-hop result and a network finding. Its editors want one more page before anyone spends money: should the research desk run on a graph, on vector or keyword retrieval, or on both? The data under every number tonight is still the real Wikidata extract (CC0, fetched 2026-11-16).</p>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> Section 6 of Vellum's graph design note: the desk's questions classified by type, a cost side written only with published numbers, the risks named, a graph, vectors or both decision, and a 90-day check list. Plus a reading of the GraphRAG evidence you can defend in either direction.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers graph as context: subgraph as facts, text-to-Cypher</span>
+      <h2>Two ways a graph reaches the prompt</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">The simplest graph RAG is not a framework. Either your code walks the graph and hands the model the path it found, written as plain facts, or the model writes the query itself and reads the rows that come back. Both are local: they start from an entity the question names.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 370" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two pipelines. A, subgraph as context: a desk question naming Esther Duflo, a graph traversal from that anchor, the answer path serialised as facts, then the LLM and an answer that cites the path. On the bench this used 4.0 facts per question against 174 words of chunks at k equals 10. B, text-to-Cypher: the same question, the LLM writes a Cypher query, the database runs it with read-only credentials, rows come back, the LLM answers from them. Failure panel: a name without its umlaut, Max Delbruck, is a valid query that returns 0 rows and no error.">
+        <defs>
+          <filter id="k6aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="61" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <marker id="k6aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k6aH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k6aL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k6aS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k6aT { font: 400 11px Inter, sans-serif; fill: #11211E; }
+          .k6aP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k6aC { font: 500 11px ui-monospace, Menlo, monospace; fill: #11211E; }
+          .k6aR { font: 800 11px Inter, sans-serif; fill: #991B1B; }
+          .k6aN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k6aH" x="30" y="28">TWO WAYS A GRAPH REACHES THE PROMPT</text>
+
+        <g filter="url(#k6aSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="64" width="140" height="56" rx="10" transform="rotate(-1 100 92)" fill="#E9F5F2"/>
+          <rect x="200" y="64" width="170" height="56" rx="10" transform="rotate(0.8 285 92)" fill="#FFFFFF"/>
+          <rect x="400" y="64" width="200" height="56" rx="10" transform="rotate(-0.6 500 92)" fill="#F4B860"/>
+          <rect x="630" y="64" width="100" height="56" rx="28" transform="rotate(0.7 680 92)" fill="#FFFFFF"/>
+          <rect x="760" y="64" width="100" height="56" rx="10" transform="rotate(-0.8 810 92)" fill="#FFFFFF"/>
+          <path d="M172 92 L196 92" marker-end="url(#k6aAr)"/>
+          <path d="M372 92 L396 92" marker-end="url(#k6aAr)"/>
+          <path d="M602 92 L626 92" marker-end="url(#k6aAr)"/>
+          <path d="M732 92 L756 92" marker-end="url(#k6aAr)"/>
+
+          <rect x="30" y="214" width="140" height="56" rx="10" transform="rotate(0.9 100 242)" fill="#E9F5F2"/>
+          <rect x="200" y="214" width="170" height="56" rx="10" transform="rotate(-0.7 285 242)" fill="#FFFFFF"/>
+          <rect x="400" y="214" width="200" height="56" rx="10" transform="rotate(0.5 500 242)" fill="#FFFFFF"/>
+          <rect x="630" y="214" width="100" height="56" rx="10" transform="rotate(-0.9 680 242)" fill="#FFFFFF"/>
+          <rect x="760" y="214" width="100" height="56" rx="10" transform="rotate(0.6 810 242)" fill="#FFFFFF"/>
+          <path d="M172 242 L196 242" marker-end="url(#k6aAr)"/>
+          <path d="M372 242 L396 242" marker-end="url(#k6aAr)"/>
+          <path d="M602 242 L626 242" marker-end="url(#k6aAr)"/>
+          <path d="M732 242 L756 242" marker-end="url(#k6aAr)"/>
+          <rect x="200" y="296" width="560" height="44" rx="8" transform="rotate(0.3 480 318)" fill="#FEF2F2" stroke="#991B1B"/>
+          <path d="M680 274 L680 292" marker-end="url(#k6aAr)"/>
+        </g>
+
+        <text class="k6aP" x="30" y="54">A · Subgraph as context (local)</text>
+        <text class="k6aL" x="44" y="88">Desk question</text>
+        <text class="k6aS" x="44" y="106">names Esther Duflo</text>
+        <text class="k6aL" x="214" y="88">Traverse the graph</text>
+        <text class="k6aS" x="214" y="106">anchor, then pattern</text>
+        <text class="k6aL" x="414" y="88">Answer path as facts</text>
+        <text class="k6aT" x="414" y="106">one sentence per edge</text>
+        <text class="k6aL" x="667" y="97">LLM</text>
+        <text class="k6aL" x="774" y="88">Answer</text>
+        <text class="k6aS" x="774" y="106">cites path</text>
+        <text class="k6aC" x="30" y="148">Banerjee ADVISED Duflo. Maskin ADVISED Banerjee. Arrow ADVISED Maskin. Arrow WON Economics, 1972.</text>
+        <text class="k6aS" x="30" y="168">Bench: 4.0 facts per question on average, against 174 words of chunks at k = 10.</text>
+
+        <text class="k6aP" x="30" y="204">B · Text-to-Cypher: the LLM writes the query</text>
+        <text class="k6aL" x="44" y="238">Desk question</text>
+        <text class="k6aS" x="44" y="256">same words</text>
+        <text class="k6aL" x="214" y="238">LLM writes Cypher</text>
+        <text class="k6aS" x="214" y="256">needs exact names</text>
+        <text class="k6aL" x="414" y="238">Database runs it</text>
+        <text class="k6aS" x="414" y="256">read-only credentials</text>
+        <text class="k6aL" x="644" y="238">Rows</text>
+        <text class="k6aS" x="644" y="256">0 or more</text>
+        <text class="k6aL" x="774" y="238">Answer</text>
+        <text class="k6aS" x="774" y="256">from rows</text>
+        <text class="k6aR" x="216" y="322">Name without its umlaut, "Max Delbruck": valid query, 0 rows, no error</text>
+
+        <text class="k6aN" x="30" y="362">Real Wikidata names. The query box below runs both spellings; the second is the silent failure.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - pattern A hands the model a short path; pattern B hands it whatever its own query returned, including nothing</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Serialising a path as facts<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Pattern A is the bench's graph method with a model on the end. Your code anchors on the entity the question names, runs a fixed pattern, and writes each edge on the answer path as one short sentence: "Abhijit Banerjee advised Esther Duflo." The model reads a handful of facts that are, by construction, the evidence for the answer.</p>
+        <p>That is the cost argument in miniature. On session 4's bench the graph method used <strong>4.0 facts per question</strong> on average and found all 24 questions. Keyword chunks at k = 10 sent <strong>174 words</strong> per question and found 9. Short context is cheaper to send and easier to check: if the answer cites a fact, you can point to the edge it came from.</p>
+        <p>Two habits keep it honest. Serialise the direction you stored (advisor to student), so the model never has to guess who advised whom. And keep the QID next to each name in a hidden field, so two people sharing a label stay apart.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Text-to-Cypher, and the silent zero<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Pattern B lets the model write the query. Neo4j's Text2Cypher paper (Ozsoy et al., 2024) combined and cleaned public datasets into <strong>44,387</strong> question and query pairs and reports gains from fine-tuning, measured in Google-BLEU and exact match. The dataset's card is reported to split them 39,554 for training and 4,833 for test.</p>
+        <p>The failure that matters is not a syntax error, which you would see. It is a valid query with one wrong literal. Graph patterns match names exactly, so "Max Delbruck" without the umlaut is a perfectly good query that returns nothing. The model then answers from zero rows, often fluently. This is session 4's trap in a new place: a missing edge and a misspelled anchor both look like "no answer", and neither raises an error.</p>
+        <p>The discipline is the one text-to-SQL already learned: link the question's words to real schema items and real values before generating. See <a href="https://phoebefu6.github.io/learn-text-to-sql-with-phoebe/courses/b2-schema-linking.html">Text-to-SQL, schema linking ↗</a>; for a graph, the "values" step means resolving names to QIDs first, and treating 0 rows as "check the anchor", never as "none".</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Read-only credentials, always<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A model that writes queries can write a delete. LangChain's GraphCypherQAChain carries a security note asking for database "credentials that are narrowly-scoped to only include necessary permissions", and warns that broad credentials risk data corruption, loss or exposure. Its <code>allow_dangerous_requests</code> flag is reported to default to False, so the chain refuses to run until you opt in by name.</p>
+        <p>Opting in is not the fix; the database user is. Give the chain a role that can only read the labels and relationship types the desk needs. Then the worst a bad generation can do is return the wrong rows, which your 0-row and row-count checks can catch.</p>
+      </div>
+    </details>
+
+    <div class="kgr-query">
+      <template data-q="Delbrück's advisor's prize, exact name">MATCH (p:Person {name:"Max Delbrück"})&lt;-[:ADVISED]-(a)-[:WON]-&gt;(z:Prize) RETURN z</template>
+      <template data-q="Same question, name without the umlaut">MATCH (p:Person {name:"Max Delbruck"})&lt;-[:ADVISED]-(a)-[:WON]-&gt;(z:Prize) RETURN z</template>
+      <template data-q="Duflo's path, as facts for a prompt">MATCH (p:Person {name:"Esther Duflo"})&lt;-[:ADVISED*3]-(b)-[:WON]-&gt;(z:Prize) RETURN z</template>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>A public benchmark for the model-writes-the-query route.</strong> Neo4j published its Text2Cypher data on Hugging Face as <code>neo4j/text2cypher-2024v1</code> under the Apache-2.0 licence. It is the natural place to test a prompt or a fine-tune before pointing it at your own graph, and a reminder that exact match on the query is a stricter test than "it ran".</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers Microsoft GraphRAG and LazyGraphRAG</span>
+      <h2>GraphRAG: summaries for the whole corpus</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">Microsoft's GraphRAG (Edge et al., 2024) answers a different kind of question. Not "which prize did Duflo's grand-advisor win?" but "what are the main themes across these thousand documents?" No single chunk holds that answer, and no single entity anchors it. So GraphRAG builds the graph from the text with an LLM, groups it into communities, and summarises every community in advance.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 312" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The GraphRAG pipeline from Edge et al. 2024. Index time: source chunks of 600 tokens, an LLM extracts entities, relations and claims with a call per chunk, an entity graph, Leiden communities at levels C0 root to C3 leaf using graspologic, and an LLM summarises every community with a call per community. The Podcast set took 281 minutes to index with gpt-4-turbo. Query time: a global question goes to a map step where each summary answers in part, a reduce step merges the partial answers, and a global answer comes back within an 8k-token context window.">
+        <defs>
+          <filter id="k6bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="67" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <marker id="k6bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k6bH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k6bL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k6bS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k6bK { font: 800 11px Inter, sans-serif; fill: #11211E; }
+          .k6bP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k6bN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k6bH" x="30" y="28">GRAPHRAG AS EDGE ET AL. BUILD IT: WHERE THE LLM CALLS GO</text>
+
+        <g filter="url(#k6bSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="60" width="130" height="60" rx="8" transform="rotate(-1 95 90)" fill="#E9F5F2"/>
+          <rect x="190" y="60" width="150" height="60" rx="8" transform="rotate(0.8 265 90)" fill="#FFFFFF"/>
+          <rect x="370" y="60" width="130" height="60" rx="8" transform="rotate(-0.7 435 90)" fill="#FFFFFF"/>
+          <rect x="530" y="60" width="150" height="60" rx="8" transform="rotate(0.6 605 90)" fill="#FFFFFF"/>
+          <rect x="710" y="60" width="140" height="60" rx="8" transform="rotate(-0.8 780 90)" fill="#FFFFFF"/>
+          <path d="M162 90 L186 90" marker-end="url(#k6bAr)"/>
+          <path d="M342 90 L366 90" marker-end="url(#k6bAr)"/>
+          <path d="M502 90 L526 90" marker-end="url(#k6bAr)"/>
+          <path d="M682 90 L706 90" marker-end="url(#k6bAr)"/>
+          <path d="M265 124 L265 138" stroke-dasharray="4 4"/>
+          <path d="M780 124 L780 138" stroke-dasharray="4 4"/>
+          <rect x="190" y="140" width="150" height="30" rx="6" transform="rotate(-1.5 265 155)" fill="#F4B860"/>
+          <rect x="700" y="140" width="156" height="30" rx="6" transform="rotate(1.2 778 155)" fill="#F4B860"/>
+
+          <rect x="620" y="222" width="230" height="56" rx="8" transform="rotate(0.6 735 250)" fill="#FFFFFF"/>
+          <rect x="380" y="222" width="200" height="56" rx="8" transform="rotate(-0.6 480 250)" fill="#FFFFFF"/>
+          <rect x="120" y="222" width="220" height="56" rx="8" transform="rotate(0.5 230 250)" fill="#E9F5F2"/>
+          <path d="M854 94 C874 124 874 220 856 246" marker-end="url(#k6bAr)"/>
+          <path d="M616 250 L584 250" marker-end="url(#k6bAr)"/>
+          <path d="M376 250 L344 250" marker-end="url(#k6bAr)"/>
+        </g>
+
+        <text class="k6bP" x="30" y="50">Index time (Podcast set: 281 minutes with gpt-4-turbo)</text>
+        <text class="k6bL" x="44" y="84">Source chunks</text>
+        <text class="k6bS" x="44" y="102">600 tokens each</text>
+        <text class="k6bL" x="204" y="84">LLM extracts</text>
+        <text class="k6bS" x="204" y="101">entities, relations</text>
+        <text class="k6bS" x="204" y="115">and claims</text>
+        <text class="k6bL" x="384" y="84">Entity graph</text>
+        <text class="k6bS" x="384" y="102">nodes, edges</text>
+        <text class="k6bL" x="544" y="84">Leiden levels</text>
+        <text class="k6bS" x="544" y="101">C0 root to C3 leaf</text>
+        <text class="k6bS" x="544" y="115">graspologic</text>
+        <text class="k6bL" x="724" y="84">LLM summarises</text>
+        <text class="k6bS" x="724" y="102">every community</text>
+        <text class="k6bK" x="206" y="159">a call per chunk</text>
+        <text class="k6bK" x="716" y="159">a call per community</text>
+
+        <text class="k6bP" x="30" y="206">Query time: a global question, such as the corpus's main themes</text>
+        <text class="k6bL" x="636" y="244">Map</text>
+        <text class="k6bS" x="636" y="262">each summary answers in part</text>
+        <text class="k6bL" x="396" y="244">Reduce</text>
+        <text class="k6bS" x="396" y="262">merge the partial answers</text>
+        <text class="k6bL" x="136" y="244">Global answer</text>
+        <text class="k6bS" x="136" y="262">8k-token context window</text>
+
+        <text class="k6bN" x="30" y="302">Pipeline as described in Edge et al. 2024. Calls grow with the chunk count and the community count.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the LLM is called once per chunk to build the graph and once per community to summarise it, all before the first question</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What "global" questions are, and why vector RAG misses them<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Edge and colleagues target "global sensemaking" questions: ones about the whole corpus, such as its main themes. Retrieval of the top-k most similar chunks cannot answer them well, because the answer is spread across hundreds of chunks and none of them is "about" the question more than the others.</p>
+        <p>Their pipeline, read at source: chunk the documents; have an LLM extract entities, relationships and claims into a graph; partition the graph with Leiden (Traag et al., 2019), applied hierarchically until the leaf communities, using the graspologic library; have an LLM write a summary of every community; then answer a question by map-reduce. In the map step each community summary produces a partial answer in parallel; the reduce step combines them.</p>
+        <p>The data: a Podcast set of about 1 million tokens in 1,669 chunks of 600 tokens, and a News set of about 1.7 million tokens in 3,197 chunks. Against vector RAG, GraphRAG's answers won on <strong>comprehensiveness 72-83%</strong> of the time on Podcast and <strong>72-80%</strong> on News, and on <strong>diversity 75-82%</strong> and <strong>62-71%</strong>. Vector RAG produced the most direct answers in all comparisons. The root-level summaries (C0) needed "over 97% fewer tokens" than summarising the source text directly.</p>
+        <p>The cost sits at index time: building the graph for the Podcast set took <strong>281 minutes</strong> with gpt-4-turbo. And the authors' own limitation: two corpora of about 1 million tokens each.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The judge's four criteria<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Edge et al. score answers head to head with an LLM judge, 125 questions per comparison, each repeated five times, on four criteria:</p>
+        <table class="clean">
+          <tr><th>Criterion</th><th>What it rewards</th><th>Result vs vector RAG</th></tr>
+          <tr><td>Comprehensiveness</td><td>How much of the question's ground the answer covers</td><td>GraphRAG ahead</td></tr>
+          <tr><td>Diversity</td><td>How many different perspectives it offers</td><td>GraphRAG ahead</td></tr>
+          <tr><td>Empowerment</td><td>How well it helps the reader judge for themselves</td><td>Mixed</td></tr>
+          <tr><td>Directness</td><td>How specifically it answers; used as a validity check</td><td>Vector RAG ahead</td></tr>
+        </table>
+        <p>Notice what is not on the list: whether the answer is correct against a known key. That is reasonable for "main themes", which has no key, and it is exactly where Part 3's critics push.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>LazyGraphRAG's trade<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Microsoft Research's LazyGraphRAG (blog, 25 November 2024) moves the LLM out of indexing. It extracts noun phrases with ordinary NLP instead of an LLM, so indexing costs are "identical to vector RAG and 0.1% of the costs of full GraphRAG", and it defers LLM work to query time. The blog reports global-query quality comparable to GraphRAG's global search at "more than 700 times lower query cost".</p>
+        <p>The trade is the usual one: pay up front for summaries every query can reuse, or pay per query for work done only when someone asks. If your corpus changes daily and global questions are rare, lazy wins. If the corpus is stable and global questions are the product, the up-front index may pay back.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Chunk size changes the graph.</strong> In the same paper, GPT-4 extracted almost twice as many entity references from 600-token chunks as from 2,400-token chunks on a HotpotQA sample. Smaller chunks mean more extraction calls, and more of the graph. The graph an LLM builds is a function of how you fed it, which is session 4's lesson about extraction coverage in another form.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers the contested evidence: Han, Xiang, Zhou</span>
+      <h2>Where the evaluations disagree</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">GraphRAG's gains are contested, and the honest position is to hold the disagreement rather than pick a side. Three independent evaluations from 2025 agree on some cells of the map and disagree on others, and the disagreements have reasons you can name: what was judged, by whom, and how much of the graph existed.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 384" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A three by three grid of question type against method, in the papers' own words. Single-hop fact: RAG better for all three columns; vector RAG is best on detailed single-hop (Han, Xiang), graph retrieval is limited by KG coverage (Han), community global search loses detail (Han). Multi-hop: GraphRAG better; RAG scores 60.04 F1 on HotpotQA against HippoRAG2's 63.01 (Han), and GraphRAG has a clear advantage on complex reasoning (Xiang); community GraphRAG is not settled in these papers. Global summary: mixed for vector RAG (Edge finds GraphRAG wins 72 to 83 percent on comprehensiveness, Han finds RAG more comprehensive); graph retrieval better on contextual summaries but prompts grow (Xiang); community GraphRAG mixed, ahead on diversity but judges show position bias (Han). Zhou et al. find different variants win on specific versus abstract questions.">
+        <defs>
+          <filter id="k6cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="73" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+        </defs>
+        <style>
+          .k6cH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k6cL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k6cS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k6cT { font: 400 11px Inter, sans-serif; fill: #11211E; }
+          .k6cP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k6cK { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k6cN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k6cH" x="30" y="28">WHAT THE EVALUATIONS SAY, BY QUESTION TYPE AND METHOD</text>
+
+        <g filter="url(#k6cSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="215" y="86" width="205" height="76" rx="8" transform="rotate(-0.5 317 124)" fill="#FFFFFF"/>
+          <rect x="432" y="86" width="205" height="76" rx="8" transform="rotate(0.4 534 124)" fill="#FFFFFF"/>
+          <rect x="649" y="86" width="205" height="76" rx="8" transform="rotate(-0.4 751 124)" fill="#FFFFFF"/>
+          <rect x="215" y="172" width="205" height="76" rx="8" transform="rotate(0.4 317 210)" fill="#E9F5F2"/>
+          <rect x="432" y="172" width="205" height="76" rx="8" transform="rotate(-0.5 534 210)" fill="#E9F5F2"/>
+          <rect x="649" y="172" width="205" height="76" rx="8" transform="rotate(0.5 751 210)" fill="#F4B860"/>
+          <rect x="215" y="258" width="205" height="76" rx="8" transform="rotate(-0.4 317 296)" fill="#F4B860"/>
+          <rect x="432" y="258" width="205" height="76" rx="8" transform="rotate(0.5 534 296)" fill="#E9F5F2"/>
+          <rect x="649" y="258" width="205" height="76" rx="8" transform="rotate(-0.5 751 296)" fill="#F4B860"/>
+        </g>
+
+        <text class="k6cL" x="225" y="56">Vector RAG</text>
+        <text class="k6cS" x="225" y="72">chunks, embeddings</text>
+        <text class="k6cL" x="442" y="56">Graph retrieval</text>
+        <text class="k6cS" x="442" y="72">KG-based, HippoRAG2</text>
+        <text class="k6cL" x="659" y="56">Community GraphRAG</text>
+        <text class="k6cS" x="659" y="72">MS global search</text>
+
+        <text class="k6cL" x="30" y="118">Single-hop fact</text>
+        <text class="k6cS" x="30" y="136">one named entity</text>
+        <text class="k6cL" x="30" y="204">Multi-hop</text>
+        <text class="k6cS" x="30" y="222">2 or more linked facts</text>
+        <text class="k6cL" x="30" y="290">Global summary</text>
+        <text class="k6cS" x="30" y="308">themes across a corpus</text>
+
+        <text class="k6cP" x="229" y="110">RAG better</text>
+        <text class="k6cS" x="229" y="130">best on detailed single-hop</text>
+        <text class="k6cS" x="229" y="146">Han 2025; Xiang 2025 agree</text>
+        <text class="k6cP" x="446" y="110">RAG better</text>
+        <text class="k6cS" x="446" y="130">KG coverage too limited</text>
+        <text class="k6cS" x="446" y="146">Han 2025</text>
+        <text class="k6cP" x="663" y="110">RAG better</text>
+        <text class="k6cS" x="663" y="130">global search loses detail</text>
+        <text class="k6cS" x="663" y="146">Han 2025</text>
+
+        <text class="k6cP" x="229" y="196">GraphRAG better</text>
+        <text class="k6cS" x="229" y="216">RAG 60.04 F1 on HotpotQA</text>
+        <text class="k6cS" x="229" y="232">Han 2025</text>
+        <text class="k6cP" x="446" y="196">GraphRAG better</text>
+        <text class="k6cS" x="446" y="216">HippoRAG2 63.01 F1 (Han)</text>
+        <text class="k6cS" x="446" y="232">complex reasoning (Xiang)</text>
+        <text class="k6cK" x="663" y="196">Not settled</text>
+        <text class="k6cT" x="663" y="216">no separate verdict in</text>
+        <text class="k6cT" x="663" y="232">these papers</text>
+
+        <text class="k6cK" x="229" y="282">Mixed</text>
+        <text class="k6cT" x="229" y="302">Edge: GraphRAG wins 72-83%</text>
+        <text class="k6cT" x="229" y="318">Han: RAG more comprehensive</text>
+        <text class="k6cP" x="446" y="282">GraphRAG better</text>
+        <text class="k6cS" x="446" y="302">contextual summaries (Xiang)</text>
+        <text class="k6cS" x="446" y="318">prompts grow longer (Xiang)</text>
+        <text class="k6cK" x="663" y="282">Mixed</text>
+        <text class="k6cT" x="663" y="302">diversity wins (Edge, Han)</text>
+        <text class="k6cT" x="663" y="318">judge position bias (Han)</text>
+
+        <text class="k6cN" x="30" y="356">Words and figures from the papers only. Warm cells are where they disagree or say nothing apart.</text>
+        <text class="k6cN" x="30" y="374">Zhou et al. 2025: different graph-RAG variants win on specific vs abstract questions.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - plain RAG holds the single-hop row, graphs lead the multi-hop row, and the global row is where the judges disagree</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Where the evaluations agree<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>Single-hop facts go to plain retrieval.</strong> Han et al. (2025, a systematic RAG vs GraphRAG evaluation) find "RAG excels on detailed single-hop queries". Xiang et al. (2025, GraphRAG-Bench) find "basic RAG is comparable to or outperforms GraphRAG in simple fact retrieval tasks". Two independent groups, same row.</p>
+        <p><strong>Multi-hop leans to graphs.</strong> Han et al. find GraphRAG methods perform best on the multi-hop benchmarks, for example HippoRAG2 at <strong>63.01 F1</strong> against RAG's <strong>60.04</strong> on HotpotQA. Xiang et al. find a clear advantage for GraphRAG in complex reasoning and contextual summarisation. Note the size: three F1 points, not a rout.</p>
+        <p><strong>Routing helps.</strong> Han et al. report that selecting or combining RAG and GraphRAG per query gave consistent gains. Zhou et al. (2025), who put graph-based RAG methods in one framework, find different variants win on specific and on abstract questions. Nobody's evidence says one method for every question.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Where they disagree, and why<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>The judge.</strong> Edge et al. used an LLM judge and found GraphRAG more comprehensive. Han et al., also judging summaries with an LLM, prefer RAG for comprehensiveness and GraphRAG's global search for diversity, and report that "position bias is clearly present": swap the order the two answers are shown in and verdicts can flip. A head-to-head judged by a model is a measurement with its own error bar.</p>
+        <p><strong>Coverage.</strong> Han et al. find KG-based GraphRAG generally underperforms because of limited graph coverage, and that community global search can lose the fine-grained evidence detail questions need. A graph only answers from the edges it holds.</p>
+        <p><strong>Cost.</strong> Xiang et al. find GraphRAG "significantly increases prompt length": Microsoft GraphRAG's global search around <strong>4x10^4 tokens</strong> per query against about <strong>10^3</strong> for HippoRAG2. A quality gain bought with forty times the prompt is a different decision from a free one.</p>
+        <p>Which of these dominates depends on your questions, your judge and your graph. That is why the capstone classifies the desk's questions before choosing anything. RAG evaluation itself, judges and their biases included, is taught in <a href="https://phoebefu6.github.io/learn-rag-with-phoebe/courses/b9-evaluation.html">RAG, evaluation ↗</a>.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The bench's own evidence<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Session 4 measured the same shape on Vellum's graph, with no judge at all: a question counts as found only when every fact on its answer path was retrieved.</p>
+        <table class="clean">
+          <tr><th>Method</th><th>Found, by hop 1 / 2 / 3 / 4</th><th>Total</th></tr>
+          <tr><td>BM25 chunks, k = 10</td><td>6 / 3 / 0 / 0</td><td>9 of 24</td></tr>
+          <tr><td>Graph traversal, full depth</td><td>6 / 6 / 6 / 6</td><td>24 of 24</td></tr>
+          <tr><td>Graph, ADVISED never extracted</td><td>4 / 0 / 0 / 0</td><td>4 of 24</td></tr>
+        </table>
+        <p>Read it alongside the papers. Chunks tie the graph on one hop, as Han and Xiang would predict. The graph wins the multi-hop rows, as they also predict. And the third row is Han's coverage finding made concrete: drop one relation type at extraction time and the graph falls below the chunks, reporting nothing wrong. The bench's baseline is single-shot keyword retrieval; vectors and hybrid search, which live in <a href="https://phoebefu6.github.io/learn-rag-with-phoebe/courses/b5-metadata-hybrid.html">RAG, metadata and hybrid retrieval ↗</a>, would move the chunk numbers, not the trap.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Multi-hop benchmarks are where the graph rows were measured.</strong> HotpotQA (Yang et al., 2018) holds 113k Wikipedia questions that require reasoning over multiple supporting documents; MuSiQue (Trivedi et al., 2022) composed 25K questions of two to four hops from single-hop ones. When a paper reports a GraphRAG gain, check which benchmark it came from: a multi-hop gain says little about your single-hop help-desk traffic.</p>
+    </div>
+  </section>
+
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Capstone: Vellum's graph, vectors or both</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Six steps, no install. You re-read the five sections Vellum already wrote, sort the desk's questions by type, write the cost side using only published numbers, name the risks, and make the call. The output is section 6 of the design note, the one an editor would actually read.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 460" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A decision tree. Are the key desk questions 2 or more hops? No: vectors only, cost one index and short prompts, no graph upkeep. Yes: can you test extraction coverage with canaries? No: not yet, plant known edges and count how many come back. Yes: are there global themes questions too? No: graph for the multi-hop desk questions plus vectors or BM25 for the rest, cost extraction calls, edge upkeep and short fact prompts, recommended for Vellum. Yes: community GraphRAG as well, cost extraction calls plus a call per community, prompts near 4x10^4 tokens per Xiang et al., only once global questions exist.">
+        <defs>
+          <filter id="k6dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="79" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <marker id="k6dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k6dH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k6dL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k6dS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k6dT { font: 400 11px Inter, sans-serif; fill: #11211E; }
+          .k6dP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k6dK { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k6dB { font: 800 11px Inter, sans-serif; fill: #6A4300; }
+          .k6dN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k6dH" x="30" y="28">VELLUM'S DECISION: GRAPH, VECTORS OR BOTH</text>
+
+        <g filter="url(#k6dSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="300" y="44" width="280" height="52" rx="10" transform="rotate(-0.6 440 70)" fill="#E9F5F2" stroke="#004238"/>
+          <rect x="30" y="44" width="220" height="80" rx="8" transform="rotate(0.8 140 84)" fill="#FFFFFF"/>
+          <rect x="300" y="150" width="280" height="52" rx="10" transform="rotate(0.5 440 176)" fill="#E9F5F2" stroke="#004238"/>
+          <rect x="620" y="140" width="230" height="80" rx="8" transform="rotate(-0.8 735 180)" fill="#FFFFFF"/>
+          <rect x="300" y="256" width="280" height="52" rx="10" transform="rotate(-0.5 440 282)" fill="#E9F5F2" stroke="#004238"/>
+          <rect x="40" y="340" width="380" height="90" rx="8" transform="rotate(0.4 230 385)" fill="#F4B860"/>
+          <rect x="470" y="340" width="380" height="90" rx="8" transform="rotate(-0.4 660 385)" fill="#FFFFFF"/>
+          <path d="M298 70 L254 70" marker-end="url(#k6dAr)"/>
+          <path d="M440 98 L440 146" marker-end="url(#k6dAr)"/>
+          <path d="M582 176 L616 176" marker-end="url(#k6dAr)"/>
+          <path d="M440 204 L440 252" marker-end="url(#k6dAr)"/>
+          <path d="M390 310 L252 336" marker-end="url(#k6dAr)"/>
+          <path d="M490 310 L640 336" marker-end="url(#k6dAr)"/>
+        </g>
+
+        <text class="k6dL" x="322" y="66">Are the key desk questions</text>
+        <text class="k6dL" x="322" y="84">2 or more hops?</text>
+        <text class="k6dB" x="266" y="62">no</text>
+        <text class="k6dP" x="44" y="68">Vectors only</text>
+        <text class="k6dS" x="44" y="88">cost: one index, short prompts,</text>
+        <text class="k6dS" x="44" y="104">no graph upkeep</text>
+
+        <text class="k6dB" x="450" y="128">yes</text>
+        <text class="k6dL" x="322" y="172">Can you test extraction</text>
+        <text class="k6dL" x="322" y="190">coverage with canaries?</text>
+        <text class="k6dB" x="590" y="166">no</text>
+        <text class="k6dP" x="634" y="164">Not yet: test first</text>
+        <text class="k6dS" x="634" y="184">plant known edges, count</text>
+        <text class="k6dS" x="634" y="200">how many come back</text>
+
+        <text class="k6dB" x="450" y="234">yes</text>
+        <text class="k6dL" x="322" y="278">Are there global themes</text>
+        <text class="k6dL" x="322" y="296">questions too?</text>
+        <text class="k6dB" x="262" y="318">no</text>
+        <text class="k6dB" x="592" y="318">yes</text>
+
+        <text class="k6dK" x="56" y="364">Graph for the multi-hop desk questions,</text>
+        <text class="k6dK" x="56" y="382">vectors or BM25 for the rest</text>
+        <text class="k6dT" x="56" y="402">cost: extraction calls, edge upkeep, short fact prompts</text>
+        <text class="k6dT" x="56" y="418">recommended for Vellum (constructed)</text>
+        <text class="k6dP" x="486" y="364">Community GraphRAG as well</text>
+        <text class="k6dS" x="486" y="384">cost: extraction calls plus a call per community;</text>
+        <text class="k6dS" x="486" y="400">prompts near 4x10^4 tokens (Xiang et al.)</text>
+        <text class="k6dS" x="486" y="416">only once global questions exist</text>
+
+        <text class="k6dN" x="30" y="452">Constructed Vellum example. Costs in words; the one number is the paper's own.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - hop count first, testable coverage second, global questions last; each branch carries its cost in words</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step">
+        <p><strong>Re-read sections 1 to 5 of the design note.</strong> Pull one line from each. These are the facts the decision stands on; everything was measured on the real graph.</p>
+        <div class="prompt-box good"><span class="label">★ Step 1 · what Vellum already knows</span>1 Question sort: 3 of 10 desk questions are one hop; 7 need 2 to 4.
+2 Model: Person, Institution, Country, Prize; WON, EDUCATED_AT,
+  EMPLOYED_BY, ADVISED, CITIZEN_OF; every node keyed on its QID.
+3 Four queries run in the query box, rows and paths reported apart.
+4 Multi-hop: BM25 chunks 9 of 24, graph 24 of 24.
+  Trap: ADVISED never extracted -&gt; 4 of 24, no error.
+5 Network: hubs (a country, a prize) are modelling artefacts;
+  trust the advisor view for "who connects scientists".</div>
+      </div>
+      <div class="step">
+        <p><strong>Classify the desk's questions by type.</strong> Use the three rows of the evidence map: single-hop fact, multi-hop, global summary. Add a fourth bucket for free-text questions the graph has no edge type for, such as "what did this laureate's lecture argue?".</p>
+        <div class="prompt-box good"><span class="label">★ Step 2 · the desk's questions, by type</span>Single-hop fact  : questions 1, 2, 3 (prize, advisor, education)
+Multi-hop         : questions 4 to 10 (advisor chains, the headline)
+Global summary    : none asked so far
+Free text         : lecture content, biography detail (no edge holds it)
+Evidence says     : single-hop and free text -&gt; retrieval;
+                    multi-hop -&gt; graph; global -&gt; contested</div>
+      </div>
+      <div class="step">
+        <p><strong>Write the cost side, in words and with the papers' numbers only.</strong> Your own costs will differ; quote what was published and say where it came from. Then name the case that makes Vellum unusual.</p>
+        <div class="prompt-box good"><span class="label">★ Step 3 · cost side</span>Published reference points (not Vellum's costs):
+- GraphRAG indexing, about 1M tokens: 281 minutes with gpt-4-turbo
+  (Edge et al. 2024, Podcast set).
+- LazyGraphRAG indexing: 0.1% of full GraphRAG (Microsoft Research blog).
+- MS-GraphRAG global search prompt: about 4x10^4 tokens per query,
+  against about 10^3 for HippoRAG2 (Xiang et al. 2025).
+Vellum's case: the graph came from Wikidata, already structured.
+  No LLM extraction was needed. This is the cheapest possible graph:
+  the remaining cost is upkeep (refreshing the extract) and queries.
+Graph context per bench question: 4.0 facts, against 174 words of chunks.</div>
+      </div>
+      <div class="step">
+        <p><strong>Name the risks.</strong> Three, each with the session that found it. A risk without a check is a hope; give each one a test.</p>
+        <div class="prompt-box good"><span class="label">★ Step 4 · risks and their checks</span>1 Missing edges (session 4): a relation absent from the graph answers
+  "nothing" silently. Check: canaries, known edges that must come back.
+2 Data errors (session 2): Zincke and Hahn each list the other as
+  advisor, a two-node loop. Check: flag ADVISED cycles on every refresh.
+3 Hub artefacts (session 5): country and prize nodes short-circuit paths.
+  Check: run centrality on the advisor view, never the full graph.
+Plus text-to-Cypher: a misspelled anchor returns 0 rows.
+  Check: resolve names to QIDs before querying; 0 rows means "check".</div>
+      </div>
+      <div class="step">
+        <p><strong>Write the decision as section 6.</strong> Follow the tree in the figure. Label it as constructed: it is Vellum's call on Vellum's questions, and your numbers will differ.</p>
+        <div class="prompt-box good"><span class="label">★ Step 5 · Vellum graph design note, section 6</span>Decision (Constructed Vellum example; your numbers will differ):
+BOTH.
+- Graph traversal for the multi-hop desk questions (advisor chains,
+  laureate-under-laureate), serialised as facts into the prompt.
+- Vector or BM25 retrieval for single-hop and free-text questions.
+- No community GraphRAG until global "themes" questions appear;
+  the evaluations disagree on its gains and its prompts are long.
+Why: 7 of 10 desk questions are multi-hop, where the graph found
+  24 of 24 and chunks 9; extraction cost is near zero (Wikidata).
+Condition: canaries pass on every refresh, or the graph is not used.</div>
+      </div>
+      <div class="step">
+        <p><strong>Write the 90-day check list.</strong> What the desk will look at, and when, to know whether the decision still holds.</p>
+        <div class="prompt-box good"><span class="label">★ Step 6 · 90-day check list</span>Day 1   Canary set: known ADVISED and WON edges; every one must return.
+Day 1   Route rule written down: which question types go to the graph.
+Day 30  Log every desk question with its type and route; count misroutes.
+Day 30  Re-run the bench's 24 questions after the first Wikidata refresh.
+Day 60  Review every 0-row answer: missing edge, bad name, or true empty?
+Day 90  Any global "themes" questions yet? If several, revisit
+        community GraphRAG or LazyGraphRAG, with a cost estimate first.</div>
+      </div>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Try a real graph database: Neo4j Desktop or AuraDB Free<span class="mini">20 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Neo4j Desktop is free and runs on Linux, Mac and Windows. AuraDB Free needs no credit card; its current quotas page lists <strong>200,000 nodes, 400,000 relationships and 1GB</strong> of storage. Older pages still quote smaller limits; the quotas page is the current figure. Vellum's extract, 3,507 nodes and 10,954 edges, fits with room to spare.</p>
+        <p>Load the five relationship types, then run the full Cypher versions of tonight's patterns in Neo4j. Create a read-only user first and point any text-to-Cypher experiment at that user only.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Try GraphRAG yourself<span class="mini">30 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Microsoft's open-source GraphRAG implementation is linked from the Edge et al. paper. Run it on a small corpus you know well, so you can judge the community summaries yourself. Before indexing, estimate the calls: one extraction call per chunk, plus one summary call per community. Note how long indexing takes and how long the global prompt is; compare with the published reference points in step 3, and expect yours to differ.</p>
+        <p>Then ask it one single-hop factual question and one global question. Per Han et al. and Xiang et al., you would expect the first to be no better than plain retrieval and the second to be where it earns its keep. Check whether your corpus agrees.</p>
+      </div>
+    </details>
+
+    <div class="callout tip">
+      <p><strong>The cheapest graph is the one somebody already curated.</strong> Most GraphRAG cost is the LLM turning text into edges. Vellum skipped that by starting from Wikidata. Before paying for extraction, look for a structured source of your relations: a CRM, a ticket system's links, a catalogue's lineage. Extract only what no system already records.</p>
+    </div>
+  </section>
+
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>After the last session</h2>
+      <span class="tag exercise">45 min</span>
+    </div>
+    <ol>
+      <li><strong>Classify twenty real questions</strong> your team asks into single-hop fact, multi-hop, global summary and free text. Write the share of each; that ratio is most of your decision.</li>
+      <li><strong>Write ten canaries</strong> for one graph you own or plan: known edges that must come back from a query. Run them after the next data refresh and record how many return.</li>
+      <li><strong>Find the curated source.</strong> For your multi-hop questions, list which relations already exist as structured data and which would need LLM extraction. Only the second list carries GraphRAG's indexing cost.</li>
+      <li><strong>Write your own section 6.</strong> Graph, vectors or both, with a cost side that quotes only published numbers or your own measurements, three named risks with checks, and a 90-day list.</li>
+    </ol>
+  </section>
+
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 6 gets stamped in your passport.</p>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · In Microsoft's GraphRAG, what are the community summaries for?</p>
+      <button class="qopt" type="button">A · They replace the source chunks, so the original text can be deleted</button>
+      <button class="qopt" type="button">B · They make single-hop fact lookups faster than vector search</button>
+      <button class="qopt" type="button">C · They let a map-reduce answer global questions: each summary gives a partial answer, and the partials are merged</button>
+      <button class="qopt" type="button">D · They are used only to draw the graph for human review</button>
+      <p class="qwhy">Edge et al. target global sensemaking questions that no single chunk answers. Each community summary answers in part (map), and the partial answers are combined (reduce). The summaries cost a call per community at index time, paid before the first question.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · Where do Han et al. find plain RAG does better than GraphRAG?</p>
+      <button class="qopt" type="button">A · On detailed single-hop queries</button>
+      <button class="qopt" type="button">B · On multi-hop benchmarks such as HotpotQA</button>
+      <button class="qopt" type="button">C · Everywhere, by a wide margin</button>
+      <button class="qopt" type="button">D · Nowhere: GraphRAG wins every question type</button>
+      <p class="qwhy">"RAG excels on detailed single-hop queries", while GraphRAG methods do best on multi-hop benchmarks (HippoRAG2 63.01 F1 against RAG's 60.04 on HotpotQA). They also found that choosing or combining the two per query gave consistent gains.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="3">
+      <p class="qtext">3 · On session 4's bench, a graph that never extracted ADVISED found 4 of 24 questions. What does that mean for GraphRAG?</p>
+      <button class="qopt" type="button">A · Nothing: GraphRAG uses communities, not edges</button>
+      <button class="qopt" type="button">B · GraphRAG should always be avoided</button>
+      <button class="qopt" type="button">C · Larger chunks will fix it automatically</button>
+      <button class="qopt" type="button">D · An LLM-built graph is only as good as its extraction coverage, and a missing relation fails silently, so coverage needs its own test</button>
+      <p class="qwhy">GraphRAG builds its graph by LLM extraction. If a relation is never extracted, the graph answers fewer questions without any error, the same mechanism Han et al. describe as limited coverage. Canaries, known edges that must come back, are the test.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Edge et al. (2024), From Local to Global: A Graph RAG Approach to Query-Focused Summarization</span><span class="note">Pipeline, datasets, win rates, token and indexing cost, limitation; read at source (arXiv v2)</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Microsoft Research blog (25 Nov 2024), LazyGraphRAG</span><span class="note">Indexing at 0.1% of full GraphRAG; query-time LLM use; read at source</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Han et al. (2025), RAG vs. GraphRAG: A Systematic Evaluation and Key Insights</span><span class="note">Single-hop vs multi-hop results, coverage, position bias, per-query routing; read at source</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Xiang et al. (2025), GraphRAG-Bench</span><span class="note">Simple fact retrieval vs complex reasoning; prompt length; read at source</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Zhou et al. (2025), Graph-based RAG in a unified framework</span><span class="note">Different variants win on specific vs abstract questions; read at source</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Ozsoy et al. (2024), Text2Cypher (Neo4j)</span><span class="note">44,387 instances read at source; the train/test split is as reported on the dataset card</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">LangChain GraphCypherQAChain</span><span class="note">Security note on narrowly scoped credentials read at source; the allow_dangerous_requests default as reported</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Traag, Waltman and van Eck (2019), Leiden</span><span class="note">The community algorithm inside GraphRAG; read at source</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">HotpotQA (Yang et al. 2018) and MuSiQue (Trivedi et al. 2022)</span><span class="note">The multi-hop benchmarks behind the graph rows; from each paper's abstract</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Neo4j AuraDB quotas and Neo4j Desktop</span><span class="note">Free-tier limits from the current quotas page</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Vellum Press and its decision</span><span class="note">Constructed; the bench figures it quotes are computed on the real graph</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 6 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Path as facts</b><span>Walk the graph, serialise the answer path. Bench: 4.0 facts vs 174 words of chunks.</span></div>
+      <div class="cheat-item"><b>Zero rows means check</b><span>Text-to-Cypher fails silently on a wrong name. Resolve to QIDs; use read-only credentials.</span></div>
+      <div class="cheat-item"><b>GraphRAG is for global questions</b><span>Extract, Leiden communities, summarise, map-reduce. A call per chunk and per community.</span></div>
+      <div class="cheat-item"><b>The evidence splits by question</b><span>Single-hop: RAG. Multi-hop: graphs lead. Global: the judges disagree.</span></div>
+      <div class="cheat-item"><b>Coverage is the hidden cost</b><span>A relation never extracted answers nothing, without error. Test with canaries.</span></div>
+      <div class="cheat-item"><b>Curated beats extracted</b><span>If a system already records the relation, the graph costs upkeep, not LLM calls.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p>That closes the six sessions. The natural next step is the retrieval half of Vellum's "both": embeddings, hybrid search and evaluation in the <a href="https://phoebefu6.github.io/learn-rag-with-phoebe/courses/b5-metadata-hybrid.html">RAG builder track ↗</a>, starting with metadata and hybrid retrieval, then <a href="https://phoebefu6.github.io/learn-rag-with-phoebe/courses/b9-evaluation.html">evaluation ↗</a> to measure your own routes. For every other topic, the <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe hub ↗</a>.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 6 of 6 · learn-knowledge-graphs-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="05-paths-centrality-communities.html">← Prev: Paths, centrality and communities</a> &nbsp;·&nbsp; <a href="../index.html">Course home</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/kgr-sample.js?v=1"></script>
+<script src="../assets/kgr-live.js?v=4"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

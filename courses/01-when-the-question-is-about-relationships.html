@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 1 of 6. Entity, relation and hop; the questions a table answers and the ones a graph answers; join depth as the tell; and what retrieving text chunks silently gets wrong. Real Wikidata rows, constructed Vellum Press case.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="When the question is about relationships - learn knowledge graphs with phoebe">
+<meta property="og:description" content="Session 1 of 6. One pattern finds 191 Nobel laureates whose doctoral advisor also won. Sort ten questions by how many hops they need.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/courses/01-when-the-question-is-about-relationships.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="When the question is about relationships - learn knowledge graphs with phoebe">
+<meta name="twitter:description" content="Session 1 of 6. Entities, relations, hops, and the questions only a graph answers.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-knowledge-graphs-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 1 · When the question is about relationships - learn knowledge graphs with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-knowledge-graphs-with-phoebe</a> / Session 1 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Knowledge Graphs with Phoebe · Session 1 of 6</div>
+    <h1>When the question is about <span class="accent">relationships</span></h1>
+    <p class="sub">"Which Nobel laureates studied under someone who also won?" is not a lookup. It is a question about a relationship between two people, and about a property of each. Tonight we name the parts (entity, relation, hop), learn to spot the question a table answers badly, and see what goes quietly wrong when you answer it by retrieving chunks of text instead of walking a graph. The graph is real: Wikidata, around a thousand laureates.</p>
+    <div class="chip-row">
+      <span class="chip level">🟢 Foundations</span>
+      <span class="chip audience">Data and ML engineers</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · Entities, relations, hops</span>
+      <span class="a3" style="flex:5">18-40 · Build-along: sort ten questions</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we start</h2>
+    </div>
+    <p class="lede">Most questions people bring to data are about one thing at a time: this customer's balance, that paper's year. Some are about how things connect, several steps away. Those are the questions a knowledge graph exists for, and the ones a pile of retrieved text answers worst, without telling you. Across six sessions one constructed publisher, <strong>Vellum Press</strong>, builds a graph design note one section at a time, from tonight's question sort to a costed decision on graph, vectors or both.</p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">★ Build-along = do it yourself</span>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Constructed Vellum example</span>
+      <p><strong>Vellum Press, constructed.</strong> An academic publisher invented for these pages. Its research desk writes the background boxes for science books and answers editors' questions like "which laureates studied under someone who also won?". Vellum is constructed; its data is not. Every graph on these pages is a real extract from Wikidata (CC0, fetched 2026-11-16): 1,000 Nobel laureates, their doctoral advisors two generations up, where they studied and worked, and their citizenship. 3,507 nodes and 10,954 typed edges in all.</p>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> Section 1 of Vellum's graph design note: ten real desk questions, each written as entities, relations and a hop count, sorted into "a table answers it" and "it needs a graph". Plus one pattern that answers the desk's headline question across the whole graph, run in your browser.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers entity, relation, hop</span>
+      <h2>Entities, relations and the hop</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">A knowledge graph stores things (entities) and the typed connections between them (relations). A hop is one step along one relation. The number of hops a question needs is the single most useful fact about it, because it decides which tools can answer it at all.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A real four-hop chain from Wikidata. Esther Duflo's doctoral advisor was Abhijit Banerjee, his was Eric Maskin, his was Kenneth Arrow, and Arrow won the Nobel Memorial Prize in Economic Sciences in 1972. Each arrow is one typed relation and one hop.">
+        <defs>
+          <filter id="k1aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="11" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <marker id="k1aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k1aH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k1aL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k1aS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k1aI { font: 400 11px Inter, sans-serif; fill: #11211E; }
+          .k1aA { font: 700 11px Inter, sans-serif; fill: #004238; }
+          .k1aB { font: 800 11px Inter, sans-serif; fill: #6A4300; }
+          .k1aN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k1aH" x="30" y="28">FOUR HOPS FROM ESTHER DUFLO, AS WIKIDATA HOLDS THEM</text>
+
+        <g filter="url(#k1aSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="96" width="140" height="56" rx="28" transform="rotate(-1 100 124)" fill="#E9F5F2"/>
+          <rect x="205" y="96" width="150" height="56" rx="28" transform="rotate(0.8 280 124)" fill="#FFFFFF"/>
+          <rect x="390" y="96" width="140" height="56" rx="28" transform="rotate(-0.6 460 124)" fill="#FFFFFF"/>
+          <rect x="565" y="96" width="140" height="56" rx="28" transform="rotate(0.7 635 124)" fill="#FFFFFF"/>
+          <rect x="730" y="190" width="130" height="56" rx="6" transform="rotate(-0.8 795 218)" fill="#F4B860"/>
+          <path d="M202 124 L174 124" marker-end="url(#k1aAr)"/>
+          <path d="M387 124 L359 124" marker-end="url(#k1aAr)"/>
+          <path d="M562 124 L534 124" marker-end="url(#k1aAr)"/>
+          <path d="M680 156 C700 190 712 206 726 214" marker-end="url(#k1aAr)"/>
+        </g>
+
+        <text class="k1aL" x="54" y="129">Esther Duflo</text>
+        <text class="k1aL" x="222" y="129">Abhijit Banerjee</text>
+        <text class="k1aL" x="415" y="129">Eric Maskin</text>
+        <text class="k1aL" x="588" y="129">Kenneth Arrow</text>
+        <text class="k1aL" x="744" y="214">Economics prize</text>
+        <text class="k1aI" x="744" y="232">year on the edge: 1972</text>
+
+        <text class="k1aA" x="160" y="86">ADVISED</text>
+        <text class="k1aA" x="345" y="86">ADVISED</text>
+        <text class="k1aA" x="520" y="86">ADVISED</text>
+        <text class="k1aA" x="612" y="200">WON</text>
+        <text class="k1aB" x="180" y="68">hop 1</text>
+        <text class="k1aB" x="365" y="68">hop 2</text>
+        <text class="k1aB" x="540" y="68">hop 3</text>
+        <text class="k1aB" x="652" y="182">hop 4</text>
+
+        <text class="k1aS" x="30" y="186">Question: which prize did the advisor of the</text>
+        <text class="k1aS" x="30" y="204">advisor of Duflo's advisor win?</text>
+        <text class="k1aS" x="30" y="228">Entities: 4 people, 1 prize. Relations: ADVISED, WON.</text>
+        <text class="k1aN" x="30" y="276">Real Wikidata rows. Arrows point from advisor to student, as the ADVISED edge is stored.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the question names one person; the answer sits four typed steps away</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Entity, relation, hop: the three words you need<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>An <strong>entity</strong> is a thing with an identity: a person, a university, a prize. A <strong>relation</strong> is a typed, directed connection between two entities: <code>ADVISED</code>, <code>EDUCATED_AT</code>, <code>WON</code>. Typed matters: "Banerjee advised Duflo" and "Banerjee worked with Duflo" are different edges, and a question can ask for one and not the other.</p>
+        <p>A <strong>hop</strong> is one traversal of one relation. "Who was Duflo's advisor?" is one hop. "Which prize did Duflo's advisor win?" is two. The figure's question is four. Count the hops before you choose a tool: almost every retrieval method handles one hop, and the methods diverge sharply after that.</p>
+        <p>Hogan and colleagues' survey gives the working definition used across these pages: a knowledge graph is "a graph of data intended to accumulate and convey knowledge of the real world", whose nodes are entities and whose edges are relations between them. They call it deliberately inclusive.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why a hop count is a property of the question, not the data<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The same graph answers one-hop and four-hop questions equally well, because traversal is what it stores. The hop count lives in the question. That is why the build-along tonight sorts questions, not tables: the sort tells you whether you need a graph, before anyone builds one.</p>
+        <p>Two traps when counting. First, a hidden hop: "laureates from the same university as their advisor" reads like one relation but needs three (person to advisor, person to university, advisor to university). Second, a fake hop: "papers by Duflo" is one hop even if the word list is long. Write the relations out and count the arrows.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Wikidata itself.</strong> Wikidata is a public knowledge graph: every item has a Q-number (Esther Duflo, Abhijit Banerjee and the prize all have one), every relation is a numbered property (P184 doctoral advisor, P166 award received), and its structured data is released under CC0. Everything on these pages is built from it, which is why every name here can be checked at source.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers tables vs graphs, join depth as the tell</span>
+      <h2>Join depth is the tell</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">Any graph fits in a table: one row per edge, with a source, a type and a target. Then every hop becomes one more self-join. One or two joins is fine. When the number of joins depends on the data ("advisors, all the way up"), SQL needs recursion, and the query stops describing the question.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same four-hop question twice. Left, as SQL over an edges table: three self-joins on the advised table plus a join to the won table, one join per hop. Right, as one graph pattern: a chain of three ADVISED steps and one WON step. Below, joins needed per hop depth: 1 hop 0 joins, 2 hops 1 join, 3 hops 2 joins, 4 hops 3 joins.">
+        <defs>
+          <filter id="k1bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="23" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="k1bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#004238" stroke-width="1" opacity=".5"/></pattern>
+        </defs>
+        <style>
+          .k1bH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k1bP { font: 800 11px Inter, sans-serif; fill: #002B25; }
+          .k1bC { font: 500 11px ui-monospace, Menlo, monospace; fill: #11211E; }
+          .k1bS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k1bV { font: 800 16px Inter, sans-serif; fill: #002B25; }
+          .k1bN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k1bH" x="40" y="28">ONE QUESTION, WRITTEN TWO WAYS</text>
+
+        <g filter="url(#k1bSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="40" y="44" width="400" height="168" rx="12" transform="rotate(-0.4 240 128)" fill="#FFFFFF"/>
+          <rect x="460" y="44" width="380" height="168" rx="12" transform="rotate(0.4 650 128)" fill="#E9F5F2" stroke="#004238"/>
+          <rect x="120" y="262" width="18" height="10" fill="url(#k1bHc)"/>
+          <rect x="300" y="252" width="18" height="20" fill="url(#k1bHc)"/>
+          <rect x="480" y="242" width="18" height="30" fill="url(#k1bHc)"/>
+          <rect x="660" y="232" width="18" height="40" fill="#F4B860"/>
+          <path d="M100 272 L780 272"/>
+        </g>
+
+        <text class="k1bP" x="58" y="68">SQL over an edges table</text>
+        <text class="k1bC" x="58" y="94">SELECT w.prize FROM advised a1</text>
+        <text class="k1bC" x="58" y="114">JOIN advised a2 ON a2.student = a1.advisor</text>
+        <text class="k1bC" x="58" y="134">JOIN advised a3 ON a3.student = a2.advisor</text>
+        <text class="k1bC" x="58" y="154">JOIN won w ON w.person = a3.advisor</text>
+        <text class="k1bC" x="58" y="174">WHERE a1.student = 'Esther Duflo'</text>
+        <text class="k1bS" x="58" y="198">one join per hop; "all the way up" needs recursion</text>
+
+        <text class="k1bP" x="478" y="68">One graph pattern</text>
+        <text class="k1bC" x="478" y="94">MATCH (p {name:"Esther Duflo"})</text>
+        <text class="k1bC" x="478" y="114">      &lt;-[:ADVISED*3]-(b)</text>
+        <text class="k1bC" x="478" y="134">      -[:WON]-&gt;(z:Prize)</text>
+        <text class="k1bC" x="478" y="154">RETURN z</text>
+        <text class="k1bS" x="478" y="198">the depth is a number in the pattern</text>
+
+        <text class="k1bS" x="146" y="268">1 hop: 0 joins</text>
+        <text class="k1bS" x="326" y="268">2 hops: 1 join</text>
+        <text class="k1bS" x="506" y="268">3 hops: 2 joins</text>
+        <text class="k1bS" x="686" y="268">4 hops: 3 joins</text>
+        <text class="k1bN" x="40" y="306">Both return the same row on this graph. The graph version is the one that still reads like the question.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - every extra hop is one more self-join; a variable depth turns the SQL into recursion</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>One self-join per hop<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Put the graph in a relational database as edge tables and the hop count becomes the join count. A two-hop question is one join, perfectly ordinary SQL. A four-hop question is three self-joins on the same table, still possible, already hard to read and easy to get subtly wrong (join the wrong column and you walk students instead of advisors).</p>
+        <p>The real break is a variable depth: "every academic ancestor of Duflo". SQL can do it with a recursive common table expression, and the query no longer looks like the question. A graph query writes the depth as a number, <code>*1..4</code>, and session 3 shows both side by side.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>When a graph beats a table, and when it does not<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <table class="clean">
+          <tr><th>The question looks like</th><th>Better home</th></tr>
+          <tr><td>Totals, filters, group-bys over many rows of one kind</td><td>A table (the warehouse)</td></tr>
+          <tr><td>One or two fixed joins between well-known entities</td><td>A table; a graph adds little</td></tr>
+          <tr><td>Paths of varying length, "connected to", "anywhere upstream"</td><td>A graph</td></tr>
+          <tr><td>Many relation types between few kinds of entity, changing often</td><td>A graph (adding an edge type is not a migration)</td></tr>
+          <tr><td>Who sits between groups, who is central</td><td>A graph and its algorithms (session 5)</td></tr>
+        </table>
+        <p>Relational modelling itself, keys, grain and normal forms, is taught in <a href="https://phoebefu6.github.io/learn-data-modeling-with-phoebe/courses/b3-er-and-keys.html">Data Modeling, ER, cardinality and keys ↗</a>. If your question is about lineage between data assets rather than knowledge about the world, start with <a href="https://phoebefu6.github.io/learn-metadata-catalog-lineage-with-phoebe/courses/03-lineage-the-graph-behind-the-dashboard.html">Metadata, Catalog and Lineage, session 3 ↗</a>.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Even a graph store caps the depth.</strong> The public Wikidata Query Service stops any query at 60 seconds, by its own user manual. Deep, unanchored path queries over a graph of its size hit that wall. Anchoring the pattern on one named entity, as every question on the bench does, is what keeps multi-hop queries cheap.</p>
+    </div>
+  </section>
+
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers what chunk retrieval silently gets wrong</span>
+      <h2>What chunks get wrong, quietly</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">Retrieval over text chunks finds passages that share words with the question. The first hop shares the question's words: the person is named. The later hops do not. The bridge people, Banerjee, Maskin, Arrow, never appear in the question, so their passages rank like any other passage that mentions "doctoral advisor".</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BM25 retrieval for the four-hop Duflo question over 6,351 two-fact chunks generated from the same Wikidata facts. The four facts the answer needs rank 1, 350, 330 and 313. The query words after stopwords are advisor, doctoral, duflo, esther, nobel, prize, win. Only the first fact contains Duflo's name; at k equals 10 the other three are out of reach.">
+        <defs>
+          <filter id="k1cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="37" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <marker id="k1cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#11211E" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .k1cH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k1cL { font: 600 12px Inter, sans-serif; fill: #11211E; }
+          .k1cS { font: 400 11px Inter, sans-serif; fill: #475B57; }
+          .k1cP { font: 800 11px Inter, sans-serif; fill: #002B25; }
+          .k1cR { font: 800 11px Inter, sans-serif; fill: #991B1B; }
+          .k1cV { font: 800 18px Inter, sans-serif; fill: #002B25; }
+          .k1cX { font: 800 18px Inter, sans-serif; fill: #991B1B; }
+          .k1cN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k1cH" x="30" y="28">THE FOUR FACTS THE ANSWER NEEDS, AND WHERE BM25 RANKS THEM</text>
+
+        <g filter="url(#k1cSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="48" width="230" height="200" rx="10" transform="rotate(-0.6 145 148)" fill="#E9F5F2"/>
+          <rect x="300" y="48" width="440" height="40" rx="8" transform="rotate(0.4 520 68)" fill="#FFFFFF" stroke="#004238"/>
+          <rect x="300" y="104" width="440" height="40" rx="8" transform="rotate(-0.4 520 124)" fill="#FEF2F2" stroke="#991B1B"/>
+          <rect x="300" y="160" width="440" height="40" rx="8" transform="rotate(0.3 520 180)" fill="#FEF2F2" stroke="#991B1B"/>
+          <rect x="300" y="216" width="440" height="40" rx="8" transform="rotate(-0.3 520 236)" fill="#FEF2F2" stroke="#991B1B"/>
+          <path d="M264 120 C280 100 284 80 296 70" marker-end="url(#k1cAr)"/>
+          <path d="M300 280 L760 280" stroke="#004238" stroke-dasharray="6 5"/>
+        </g>
+
+        <text class="k1cP" x="46" y="74">The question's words</text>
+        <text class="k1cS" x="46" y="96">after stopwords:</text>
+        <text class="k1cL" x="46" y="122">esther, duflo</text>
+        <text class="k1cL" x="46" y="142">doctoral, advisor</text>
+        <text class="k1cL" x="46" y="162">nobel, prize, win</text>
+        <text class="k1cS" x="46" y="194">missing: Banerjee,</text>
+        <text class="k1cS" x="46" y="212">Maskin, Arrow, 1972</text>
+
+        <text class="k1cS" x="316" y="72">Esther Duflo's doctoral advisor was Abhijit Banerjee.</text>
+        <text class="k1cV" x="690" y="74">1</text>
+        <text class="k1cS" x="316" y="128">Abhijit Banerjee's doctoral advisor was Eric Maskin.</text>
+        <text class="k1cX" x="672" y="130">350</text>
+        <text class="k1cS" x="316" y="184">Eric Maskin's doctoral advisor was Kenneth Arrow.</text>
+        <text class="k1cX" x="672" y="186">330</text>
+        <text class="k1cS" x="316" y="240">Kenneth Arrow won the Nobel Memorial Prize ... 1972.</text>
+        <text class="k1cX" x="672" y="242">313</text>
+        <text class="k1cP" x="300" y="300">k = 10 retrieves ranks 1 to 10 only</text>
+        <text class="k1cR" x="560" y="300">3 of 4 facts never arrive</text>
+
+        <text class="k1cN" x="30" y="326">Measured on the bench: 6,351 two-fact chunks, BM25, real Wikidata facts. Ranks are best chunk per fact.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - hop 1 is named in the question and ranks first; hops 2 to 4 are not, and sink past rank 300</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The bridge entity is not in the question<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Keyword retrieval (BM25) scores a chunk by how many of the question's rarer words it contains. "Duflo" is rare, so the chunk naming her advisor ranks first. The chunk "Abhijit Banerjee's doctoral advisor was Eric Maskin" contains none of the rare words. It matches only "doctoral advisor", which hundreds of chunks share, and lands at rank 350. Embedding retrieval softens the vocabulary match but not the problem: the question still does not mention Banerjee.</p>
+        <p>There is a worse twist. The top chunk on this question says Duflo herself won the Economics prize in 2019. A reader given only the top chunks can produce the right prize name for the wrong reason, and look correct. On the bench, a question only counts as found when every fact on the answer path was retrieved.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>What the bench measures, and what it does not claim<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Session 4's bench asks 24 questions, six each at one to four hops, two ways. Graph traversal finds all 24. BM25 over two-fact chunks at k = 10 finds 9: all six one-hop questions, three of the six two-hop ones, none at three or four hops. Raising k to 30 triples the text sent per question (174 words to 530) and finds the same 9.</p>
+        <p>The baseline is deliberately simple: single-shot keyword retrieval over sentences generated from the same facts the graph holds. Vector retrieval and rerankers are taught in the <a href="https://phoebefu6.github.io/learn-rag-with-phoebe/courses/b4-retrieval-basics.html">RAG course ↗</a>, and multi-step retrieval that re-queries with the names it found would close part of the gap. The point is the mechanism, not a league table.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Benchmarks built for exactly this.</strong> Multi-hop question answering has its own datasets because single-passage retrieval fails on it. HotpotQA (2018) collected 113k questions that need reasoning over multiple supporting documents; MuSiQue (2022) composed 25K questions of two to four hops from single-hop ones, so a model cannot shortcut them. Session 6 reads what graph-based retrieval does and does not win on such benchmarks.</p>
+    </div>
+  </section>
+
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Sort Vellum's ten questions by hops</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Five steps, no install. You take ten questions from Vellum's research desk, write each as entities and relations, count the hops, and sort them. Then you run the desk's headline question as one pattern in the query box below, on the real graph. The output is section 1 of Vellum's graph design note.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A sorting board with four columns, one to four hops. One hop: Hodgkin's prize, Born's advisor, Bohr educated at. Two hops: Planck's winning students, Delbrück's advisor's prize, Bohr's advisor's country. Three hops: Rutherford's grand-advisor's prize, Fermi's winning grandstudents, and laureates under a laureate across the whole graph. Four hops: Duflo's great-grand-advisor's prize. A line between one and two hops marks where a table and chunk retrieval stop being enough.">
+        <defs>
+          <filter id="k1dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="41" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+        </defs>
+        <style>
+          .k1dH { font: 800 12px Inter, sans-serif; fill: #11211E; }
+          .k1dP { font: 800 12px Inter, sans-serif; fill: #002B25; }
+          .k1dL { font: 600 11px Inter, sans-serif; fill: #11211E; }
+          .k1dB { font: 800 11px Inter, sans-serif; fill: #6A4300; }
+          .k1dN { font: 400 12px Inter, sans-serif; fill: #475B57; }
+        </style>
+
+        <text class="k1dH" x="30" y="28">VELLUM'S DESK QUESTIONS, SORTED BY HOPS</text>
+
+        <g filter="url(#k1dSk)" fill="none" stroke="#11211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="44" width="196" height="232" rx="10" transform="rotate(-0.5 128 160)" fill="#FFFFFF"/>
+          <rect x="242" y="44" width="196" height="232" rx="10" transform="rotate(0.4 340 160)" fill="#E9F5F2"/>
+          <rect x="454" y="44" width="196" height="232" rx="10" transform="rotate(-0.4 552 160)" fill="#E9F5F2"/>
+          <rect x="666" y="44" width="196" height="232" rx="10" transform="rotate(0.5 764 160)" fill="#E9F5F2"/>
+          <rect x="44" y="84" width="168" height="30" rx="5" transform="rotate(-2 128 99)" fill="#FFFFFF"/>
+          <rect x="44" y="124" width="168" height="30" rx="5" transform="rotate(1.5 128 139)" fill="#FFFFFF"/>
+          <rect x="44" y="164" width="168" height="30" rx="5" transform="rotate(-1 128 179)" fill="#FFFFFF"/>
+          <rect x="256" y="84" width="168" height="30" rx="5" transform="rotate(1.8 340 99)" fill="#FFFFFF"/>
+          <rect x="256" y="124" width="168" height="30" rx="5" transform="rotate(-1.4 340 139)" fill="#FFFFFF"/>
+          <rect x="256" y="164" width="168" height="30" rx="5" transform="rotate(1 340 179)" fill="#FFFFFF"/>
+          <rect x="468" y="84" width="168" height="30" rx="5" transform="rotate(-1.6 552 99)" fill="#FFFFFF"/>
+          <rect x="468" y="124" width="168" height="30" rx="5" transform="rotate(1.2 552 139)" fill="#FFFFFF"/>
+          <rect x="468" y="164" width="168" height="44" rx="5" transform="rotate(-0.8 552 186)" fill="#F4B860"/>
+          <rect x="680" y="84" width="168" height="30" rx="5" transform="rotate(1.4 764 99)" fill="#FFFFFF"/>
+          <path d="M234 240 L234 290" stroke="#004238" stroke-dasharray="5 4"/>
+        </g>
+
+        <text class="k1dP" x="44" y="68">1 hop</text>
+        <text class="k1dP" x="256" y="68">2 hops</text>
+        <text class="k1dP" x="468" y="68">3 hops</text>
+        <text class="k1dP" x="680" y="68">4 hops</text>
+
+        <text class="k1dL" x="56" y="104">Hodgkin's prize</text>
+        <text class="k1dL" x="56" y="144">Born's advisor</text>
+        <text class="k1dL" x="56" y="184">Bohr: educated at</text>
+        <text class="k1dL" x="268" y="104">Planck's winners</text>
+        <text class="k1dL" x="268" y="144">Delbrück: advisor prize</text>
+        <text class="k1dL" x="268" y="184">Bohr: advisor country</text>
+        <text class="k1dL" x="480" y="104">Rutherford: 2 up, prize</text>
+        <text class="k1dL" x="480" y="144">Fermi's grandkids</text>
+        <text class="k1dL" x="480" y="184">Laureate under laureate</text>
+        <text class="k1dB" x="480" y="200">whole graph, no anchor</text>
+        <text class="k1dL" x="692" y="104">Duflo: 3 advisors up</text>
+
+        <text class="k1dB" x="252" y="262">from here: a join per hop</text>
+        <text class="k1dN" x="30" y="304">Constructed Vellum desk questions over real Wikidata rows. The highlighted note is the desk's headline question.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the line between one and two hops is where a lookup stops being enough</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step">
+        <p><strong>Write the ten questions down as the desk asked them.</strong> Plain words, no tool in mind yet. These are Vellum's, constructed for these pages; every one has a real answer in the graph.</p>
+        <div class="prompt-box good"><span class="label">★ Step 1 · the desk's questions</span>1. Which Nobel Prize did Dorothy Hodgkin win?
+2. Who was Max Born's doctoral advisor?
+3. Where was Niels Bohr educated?
+4. Which of Max Planck's doctoral students won a Nobel Prize?
+5. Which Nobel Prize did Max Delbrück's doctoral advisor win?
+6. Which country was Niels Bohr's doctoral advisor a citizen of?
+7. Which prize did the advisor of Ernest Rutherford's advisor win?
+8. Which of Enrico Fermi's academic grandchildren won a Nobel Prize?
+9. Which prize did the advisor of the advisor of Esther Duflo's advisor win?
+10. Which laureates studied under someone who also won? (the headline)</div>
+      </div>
+      <div class="step">
+        <p><strong>Rewrite each as entities and relations.</strong> Name the anchor entity, then the chain of relation types, then what comes back. Use only five relation types: WON, ADVISED, EDUCATED_AT, EMPLOYED_BY, CITIZEN_OF.</p>
+        <div class="prompt-box good"><span class="label">★ Step 2 · entities and relations</span>4.  Max Planck -ADVISED-> student -WON-> prize           return student
+5.  Max Delbrück <-ADVISED- advisor -WON-> prize          return prize
+7.  Ernest Rutherford <-ADVISED- a <-ADVISED- b -WON-> prize
+9.  Esther Duflo <-ADVISED- a <-ADVISED- b <-ADVISED- c -WON-> prize
+10. (any prize) <-WON- advisor -ADVISED-> student -WON-> (any prize)
+    no anchor: the pattern runs over the whole graph</div>
+      </div>
+      <div class="step">
+        <p><strong>Count the arrows and sort.</strong> One arrow is one hop. Put each question in a column, as in the figure. Mark the ones with no named anchor: they are whole-graph questions, the most expensive kind.</p>
+        <div class="prompt-box good"><span class="label">★ Step 3 · the sort</span>1 hop  : 1, 2, 3
+2 hops : 4, 5, 6
+3 hops : 7, 8, 10 (whole graph)
+4 hops : 9
+A table or one retrieved passage answers the first column.
+Everything to the right needs a join per arrow, or a graph.</div>
+      </div>
+      <div class="step">
+        <p><strong>Run the headline question.</strong> The query box below runs a small, documented subset of Cypher on the real graph, in your browser. Click "Laureates whose advisor also won" and read the row count. Then try the Duflo chain and change <code>*3</code> to <code>*2</code>: you have just asked a different question.</p>
+        <div class="prompt-box good"><span class="label">★ Step 4 · read these off the query box</span>Laureates whose advisor also won:
+  rows ......................... 191
+  matching paths ............... 216
+  facts used ................... 498
+Duflo, three advisors up, prize: 1 row, the Economics prize
+More paths than rows: two winning advisors, or an advisor who won twice, means two paths to one row.</div>
+      </div>
+      <div class="step">
+        <p><strong>Write section 1 of the design note.</strong> Three lines are enough. Keep the question numbers: session 3 turns four of them into queries, session 4 measures them.</p>
+        <div class="prompt-box good"><span class="label">★ Step 5 · Vellum graph design note, section 1</span>Question sort: 3 of 10 desk questions are one hop; 7 need 2 to 4.
+The headline question is a 3-hop whole-graph pattern: 191 laureates.
+Decision so far: the multi-hop questions are the reason for a graph;
+the one-hop ones would be fine in the existing database.</div>
+      </div>
+    </div>
+
+    <div class="kgr-query">
+      <template data-q="Laureates whose advisor also won">MATCH (z1:Prize)&lt;-[:WON]-(a:Person)-[:ADVISED]-&gt;(s:Person)-[:WON]-&gt;(z2:Prize) RETURN s</template>
+      <template data-q="Duflo, three advisors up, prize">MATCH (p:Person {name:"Esther Duflo"})&lt;-[:ADVISED*3]-(b)-[:WON]-&gt;(z:Prize) RETURN z</template>
+      <template data-q="Planck's students who won">MATCH (p:Person {name:"Max Planck"})-[:ADVISED]-&gt;(s)-[:WON]-&gt;(z:Prize) RETURN s</template>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>An empty result is not a "no".</strong> If a pattern returns nothing, the graph may simply be missing the edge. Wikidata records doctoral advisors for some laureates and not others. Session 4 makes that failure measurable: drop one edge type and watch the graph answer fewer questions without a single error.</p>
+    </div>
+  </section>
+
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before session 2</h2>
+      <span class="tag exercise">30 min</span>
+    </div>
+    <ol>
+      <li><strong>Collect ten real questions</strong> your team asks of its data, from tickets, chat or a dashboard request list. Write each in plain words first.</li>
+      <li><strong>Rewrite each as entities and relations</strong> the way step 2 did, and count the hops. Note any question with no named anchor.</li>
+      <li><strong>Find the hidden hop.</strong> Pick one question that looked like one relation and needed two or three once written out. That is the one most likely to be answered wrong today.</li>
+      <li><strong>In the query box,</strong> change the Planck pattern to another laureate you know of. If it returns nothing, write down whether you think the edge is missing or the answer is truly empty, and how you would tell.</li>
+    </ol>
+  </section>
+
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 1 gets stamped in your passport.</p>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · "Which Nobel Prize did Max Delbrück's doctoral advisor win?" How many hops is it?</p>
+      <button class="qopt" type="button">A · One: it is one question about one person</button>
+      <button class="qopt" type="button">B · Two: Delbrück to his advisor, then the advisor to a prize</button>
+      <button class="qopt" type="button">C · Three: person, advisor, prize are three entities</button>
+      <button class="qopt" type="button">D · It depends on how many prizes the advisor won</button>
+      <p class="qwhy">Hops count relations traversed, not entities named. Delbrück &lt;-ADVISED- Max Born -WON-&gt; Physics prize is two arrows. The number of prizes changes the number of rows, not the hops.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Why does keyword chunk retrieval find the first hop of the Duflo question but not the later ones?</p>
+      <button class="qopt" type="button">A · The later chunks are longer, so BM25 penalises them</button>
+      <button class="qopt" type="button">B · Wikidata does not hold the later facts</button>
+      <button class="qopt" type="button">C · The later facts are about Banerjee, Maskin and Arrow, whose names are not in the question, so they rank around 300 to 350</button>
+      <button class="qopt" type="button">D · BM25 only ever returns one chunk per person</button>
+      <p class="qwhy">The first fact names Duflo, a rare word in the question, and ranks 1. The bridge facts share only "doctoral advisor" with the question, like hundreds of other chunks, and rank 350, 330 and 313. Every fact is in the corpus; retrieval cannot reach it.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Which question is the strongest sign that a graph will earn its keep?</p>
+      <button class="qopt" type="button">A · "Every academic ancestor of this laureate, however far back"</button>
+      <button class="qopt" type="button">B · "How many laureates per prize per decade"</button>
+      <button class="qopt" type="button">C · "Which prize did Dorothy Hodgkin win"</button>
+      <button class="qopt" type="button">D · "List all laureates born after 1950"</button>
+      <p class="qwhy">A variable-depth path is the case where SQL turns into recursion and chunk retrieval loses the chain. B and D are aggregates and filters over one kind of row, a table's home ground; C is a single hop any method answers.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Hogan et al. (2021), Knowledge Graphs, ACM Computing Surveys 54(4)</span><span class="note">The working definition of a knowledge graph; read at source (arXiv v6)</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Wikidata data and licence</span><span class="note">Q-items, P-properties, CC0 for structured data; the extract fetched 2026-11-16</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Wikidata Query Service user manual</span><span class="note">The 60-second query deadline</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Robertson and Zaragoza (2009), BM25; Lucene BM25Similarity</span><span class="note">The ranking behind the chunk ranks; k1 1.2 and b 0.75 are Lucene's defaults</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">HotpotQA (Yang et al. 2018) and MuSiQue (Trivedi et al. 2022)</span><span class="note">Dataset sizes and design, from each paper's abstract</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Vellum Press and its desk questions</span><span class="note">Constructed; every answer and every rank is computed on the real graph</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 1 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Entity, relation, hop</b><span>Things, typed directed connections, one step along one connection.</span></div>
+      <div class="cheat-item"><b>Count arrows, not names</b><span>Hops = relations traversed. Write the chain out before choosing a tool.</span></div>
+      <div class="cheat-item"><b>Join depth is the tell</b><span>One self-join per hop; a variable depth means recursion in SQL.</span></div>
+      <div class="cheat-item"><b>The bridge is unnamed</b><span>Chunk retrieval finds hop 1; Duflo's later facts rank 313 to 350.</span></div>
+      <div class="cheat-item"><b>Right prize, wrong reason</b><span>A top chunk can contain the answer word without the evidence path.</span></div>
+      <div class="cheat-item"><b>Empty is not false</b><span>No rows may mean a missing edge. Graphs fail silently, too.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p>You have ten questions and a hop count for each. Session 2 decides what the graph holding them looks like: nodes, edges and properties in a property graph, the same facts as RDF triples, and how Wikidata does both at once with statements, qualifiers and Q-numbers that settle who is who.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 1 of 6 · learn-knowledge-graphs-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="../index.html">← Course home</a> &nbsp;·&nbsp; <a href="02-nodes-edges-and-two-models.html">Next: Nodes, edges and two models →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/kgr-sample.js?v=1"></script>
+<script src="../assets/kgr-live.js?v=4"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>
